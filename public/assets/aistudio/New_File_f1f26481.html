@@ -1,0 +1,2365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>TestBook V2 Engine</title>
+<!-- KaTeX for fast client-side LaTeX and math rendering -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<style>
+  :root {
+    --bg: #0B0F19;
+    --card: #131B2E;
+    --card2: #1A243D;
+    --accent: #0D9488;
+    --accent-soft: rgba(13, 148, 136, 0.16);
+    --line: rgba(255, 255, 255, 0.08);
+    --txt: #FFFFFF;
+    --txt2: #94A3B8;
+    --txt3: #64748B;
+    --green: #10B981;
+    --green-soft: rgba(16, 185, 129, 0.15);
+    --red: #F43F5E;
+    --red-soft: rgba(244, 63, 94, 0.15);
+    --purple: #8B5CF6;
+    --purple-soft: rgba(139, 92, 246, 0.15);
+    --amber: #F59E0B;
+    --amber-soft: rgba(245, 158, 11, 0.15);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body, .opt, .qcard, .modal {
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+  }
+  ::selection { background: transparent; }
+  ::-moz-selection { background: transparent; }
+  html, body {
+    margin: 0; padding: 0; background: var(--bg); color: var(--txt);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", Arial, sans-serif;
+    font-size: 15px; line-height: 1.5; overscroll-behavior: none;
+  }
+  body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+  .hidden { display: none !important; }
+  .spin { width: 36px; height: 36px; border-radius: 50%; border: 3px solid var(--accent-soft); border-top-color: var(--accent); animation: sp 0.8s linear infinite; display: inline-block; }
+  @keyframes sp { to { transform: rotate(360deg); } }
+  .center-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; text-align: center; }
+
+  /* App bar */
+  .appbar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--card); border-bottom: 1px solid var(--line); flex-shrink: 0; padding-top: max(8px, env(safe-area-inset-top)); }
+  .iconbtn { background: transparent; border: none; color: var(--txt); font-size: 18px; padding: 6px; cursor: pointer; border-radius: 8px; line-height: 1; display: flex; align-items: center; justify-content: center; }
+  .appbar .title { flex: 1; min-width: 0; }
+  .appbar .title h1 { font-size: 13px; font-weight: 700; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--txt); }
+  .appbar .title p { font-size: 11px; color: var(--txt2); margin: 1px 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .timer { display: flex; align-items: center; gap: 4px; background: rgba(13,148,136,0.14); border: 1px solid rgba(13,148,136,0.3); border-radius: 8px; padding: 4px 8px; font-family: ui-monospace, monospace; font-weight: 700; font-size: 13px; color: #2DD4BF; }
+  .timer.urgent { background: var(--red-soft); border-color: var(--red); color: var(--red); }
+  select.lang-sel { background: var(--card2); color: var(--txt); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; font-size: 11px; font-weight: 600; }
+
+  /* Section Tabs */
+  .sectabs { display: flex; gap: 6px; padding: 6px 12px; background: #0E1424; border-bottom: 1px solid var(--line); overflow-x: auto; flex-shrink: 0; scrollbar-width: none; }
+  .sectabs::-webkit-scrollbar { display: none; }
+  .sectab { border: none; background: var(--card); color: var(--txt2); font-size: 11px; font-weight: 600; padding: 6px 12px; border-radius: 20px; cursor: pointer; white-space: nowrap; display: flex; align-items: center; gap: 5px; flex-shrink: 0; border: 1px solid transparent; transition: all 0.2s; }
+  .sectab.active { background: var(--accent); color: #FFF; border-color: var(--accent); }
+  .sectab .badge { font-size: 9px; padding: 1px 5px; border-radius: 10px; background: rgba(0,0,0,0.3); color: inherit; }
+
+  /* Scroll container */
+  .scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 14px; }
+
+  /* Question Card & HTML content */
+  .qcard { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+  .qmeta { display: flex; align-items: center; gap: 6px; font-size: 11px; margin-bottom: 10px; color: var(--txt2); }
+  .qnum { display: inline-block; padding: 2px 8px; border-radius: 6px; background: var(--accent-soft); color: #2DD4BF; font-weight: 700; font-size: 11px; }
+  .mtag { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; }
+  .mtag.pos { color: var(--green); background: var(--green-soft); }
+  .mtag.neg { color: var(--red); background: var(--red-soft); }
+  .mtag.sub { color: var(--txt2); background: rgba(255,255,255,0.06); }
+  .qhtml, .ohtml, .solhtml { overflow-x: auto; line-height: 1.6; font-size: 14px; word-break: break-word; }
+  .qhtml *:not(img), .ohtml *:not(img), .solhtml *:not(img) { background: transparent !important; }
+  .qhtml img, .ohtml img, .solhtml img { max-width: 100%; height: auto; vertical-align: middle; border-radius: 4px; background: #FFF !important; padding: 2px; display: inline-block; }
+
+  /* Comprehension box */
+  .comp-box { background: var(--card2); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 10px; margin-bottom: 12px; max-height: 180px; overflow-y: auto; font-size: 13px; color: var(--txt2); }
+  .comp-header { font-size: 10px; text-transform: uppercase; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+
+  /* Options list */
+  .opts { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+  .opt { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; background: var(--card2); border: 1px solid var(--line); border-radius: 10px; cursor: pointer; transition: all 0.15s; }
+  .opt:active { transform: scale(0.99); }
+  .opt.sel { background: var(--accent-soft); border-color: var(--accent); }
+  .opt-idx { width: 22px; height: 22px; border-radius: 50%; background: var(--card); border: 1px solid var(--line); color: var(--txt2); font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .opt.sel .opt-idx { background: var(--accent); color: #FFF; border-color: var(--accent); }
+  .opt-txt { flex: 1; min-width: 0; font-size: 13px; color: var(--txt); }
+
+  /* Solution option highlights */
+  .opt.correct { background: var(--green-soft); border-color: var(--green); }
+  .opt.correct .opt-idx { background: var(--green); color: #000; }
+  .opt.wrong { background: var(--red-soft); border-color: var(--red); }
+  .opt.wrong .opt-idx { background: var(--red); color: #FFF; }
+  .opt.unscored-marked { background: var(--accent-soft); border-color: var(--accent); }
+
+  /* Numeric Input */
+  .num-input { width: 100%; background: var(--card2); border: 1px solid var(--line); border-radius: 8px; color: var(--txt); padding: 10px 12px; font-size: 16px; font-family: monospace; outline: none; margin-top: 10px; }
+  .num-input:focus { border-color: var(--accent); }
+
+  /* Bottom Actions Bar */
+  .botbar { display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: var(--card); border-top: 1px solid var(--line); flex-shrink: 0; padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+  .btn { border: none; border-radius: 8px; font-size: 12px; font-weight: 600; padding: 8px 12px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
+  .btn-sub { background: var(--card2); color: var(--txt2); border: 1px solid var(--line); }
+  .btn-main { background: var(--accent); color: #FFF; flex: 1; }
+  .btn-mark { background: rgba(139,92,246,0.15); color: #A78BFA; border: 1px solid rgba(139,92,246,0.3); }
+  .btn-mark.marked { background: #8B5CF6; color: #FFF; }
+  .btn-danger { background: var(--red); color: #FFF; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Palette Modal / Drawer */
+  .palette-drawer { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 100; display: flex; flex-direction: column; justify-content: flex-end; }
+  .palette-sheet { background: var(--card); border-top-left-radius: 16px; border-top-right-radius: 16px; max-height: 80vh; display: flex; flex-direction: column; padding: 14px; }
+  .palette-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; overflow-y: auto; max-height: 48vh; padding: 4px 0; }
+  .pal-btn { height: 36px; border-radius: 6px; border: none; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #FFF; }
+  .pal-btn.answered { background: var(--green); }
+  .pal-btn.not-answered { background: var(--red); }
+  .pal-btn.marked { background: var(--purple); }
+  .pal-btn.answered-marked { background: var(--accent); }
+  .pal-btn.not-visited { background: #1E293B; color: var(--txt2); }
+  /* Solutions palette reuses the taker's grid with review-specific statuses. */
+  .pal-btn.partial { background: var(--amber); color: #000; }
+  .pal-btn.skipped { background: #475569; color: var(--txt2); }
+  .pal-btn.curr { outline: 2px solid #2DD4BF; outline-offset: 1px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; font-size: 10px; color: var(--txt2); }
+  .leg-item { display: flex; align-items: center; gap: 4px; }
+  .leg-dot { width: 10px; height: 10px; border-radius: 2px; }
+
+  /* Results / Graphical Scorecard */
+  .score-hero { background: linear-gradient(180deg, #131B2E 0%, #0B0F19 100%); border: 1px solid var(--line); border-radius: 16px; padding: 16px; text-align: center; margin-bottom: 14px; }
+  .score-val { font-size: 38px; font-weight: 900; color: #2DD4BF; line-height: 1; }
+  .score-sub { font-size: 11px; color: var(--txt2); margin-top: 4px; }
+  .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 14px; }
+  .stat-card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px; text-align: center; }
+  .stat-card .v { font-size: 16px; font-weight: 700; }
+  .stat-card .l { font-size: 10px; color: var(--txt2); text-transform: uppercase; margin-top: 2px; }
+
+  /* SVG Charts Container */
+  .chart-box { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 12px; }
+  .chart-title { font-size: 12px; font-weight: 700; color: var(--txt); margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+  .donut-wrap { display: flex; align-items: center; justify-content: center; gap: 20px; }
+  .bar-row { margin-bottom: 8px; font-size: 11px; }
+  .bar-head { display: flex; justify-content: space-between; margin-bottom: 2px; color: var(--txt2); }
+  .bar-track { height: 8px; border-radius: 4px; background: var(--card2); overflow: hidden; display: flex; }
+  .bar-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+
+  /* Solutions View */
+  .filter-pills { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0; scrollbar-width: none; }
+  .pill { border: none; background: var(--card); color: var(--txt2); font-size: 10px; font-weight: 700; padding: 5px 10px; border-radius: 14px; cursor: pointer; white-space: nowrap; }
+  .pill.active { background: var(--accent); color: #FFF; }
+  .sol-card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+  .sol-exp { background: var(--card2); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 12px; margin-top: 10px; font-size: 13px; line-height: 1.6; }
+  .concept-tag { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; color: var(--accent); background: var(--accent-soft); padding: 2px 6px; border-radius: 4px; margin-top: 6px; }
+
+  /* Instructions view facts */
+  .fact-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 12px 0; }
+  .fact-card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+  .fact-card .lbl { font-size: 10px; text-transform: uppercase; color: var(--txt3); }
+  .fact-card .val { font-size: 14px; font-weight: 700; margin-top: 2px; }
+
+  /* ── Analytics chart primitives ─────────────────────────────── */
+  .donut-center { font-size: 11px; text-anchor: middle; }
+  .gauge-wrap { display: flex; align-items: center; gap: 14px; }
+  .gauge-txt { flex: 1; min-width: 0; font-size: 11px; color: var(--txt2); line-height: 1.5; }
+  .grp-bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: #1E293B; }
+  .grp-seg { height: 100%; }
+  .mini-legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 10px; color: var(--txt2); margin-top: 8px; }
+  .kv-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .kv-table th { text-align: left; font-size: 9px; text-transform: uppercase; color: var(--txt3); font-weight: 700; padding: 4px 4px; border-bottom: 1px solid var(--line); }
+  .kv-table td { padding: 5px 4px; border-bottom: 1px solid rgba(255,255,255,0.04); color: var(--txt); }
+  .kv-table td.num { text-align: right; font-family: ui-monospace, monospace; }
+  .heat { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; }
+  .heat.hi { background: var(--green-soft); color: var(--green); }
+  .heat.mid { background: var(--amber-soft); color: var(--amber); }
+  .heat.lo { background: var(--red-soft); color: var(--red); }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chip { font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 12px; background: var(--card2); color: var(--txt2); border: 1px solid var(--line); }
+  .chip.good { background: var(--green-soft); color: var(--green); border-color: rgba(16,185,129,0.3); }
+  .chip.bad { background: var(--red-soft); color: var(--red); border-color: rgba(244,63,94,0.3); }
+  .chip.info { background: var(--accent-soft); color: #2DD4BF; border-color: rgba(13,148,136,0.3); }
+  .chip.warn { background: var(--amber-soft); color: var(--amber); border-color: rgba(245,158,11,0.3); }
+  .sec-toggle { background: transparent; border: none; color: #2DD4BF; font-size: 10px; font-weight: 700; cursor: pointer; padding: 0; }
+  .empty-note { font-size: 11px; color: var(--txt3); text-align: center; padding: 10px 0; }
+  .sol-select { background: var(--card2); color: var(--txt); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; font-size: 11px; font-weight: 600; width: 100%; margin-bottom: 6px; }
+  .sol-meta-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .vid-btn { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; color: #F43F5E; background: var(--red-soft); border: 1px solid rgba(244,63,94,0.3); border-radius: 8px; padding: 6px 10px; margin-top: 8px; text-decoration: none; }
+  .numeric-key { font-family: ui-monospace, monospace; font-size: 13px; font-weight: 700; padding: 6px 10px; border-radius: 8px; display: inline-block; margin-top: 8px; }
+  .numeric-key.ok { background: var(--green-soft); color: var(--green); }
+  .numeric-key.no { background: var(--red-soft); color: var(--red); }
+
+  /* ── Collapsible accordion (solution explanations) ───────────── */
+  .acc { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--card2); }
+  .acc-head {
+    width: 100%; display: flex; align-items: center; gap: 8px; padding: 11px 12px;
+    background: transparent; border: none; cursor: pointer; text-align: left;
+    color: var(--txt); font-size: 12px; font-weight: 700; min-height: 44px;
+  }
+  .acc-title { flex: 1; min-width: 0; color: #2DD4BF; }
+  .acc-caret { font-size: 11px; color: var(--txt2); transition: transform 0.2s ease; flex-shrink: 0; }
+  .acc-head[aria-expanded="true"] .acc-caret { transform: rotate(180deg); }
+  .acc-body { padding: 0 12px 12px; font-size: 13px; line-height: 1.65; border-top: 1px solid var(--line); padding-top: 10px; }
+  .acc.muted .acc-title { color: var(--txt3); }
+
+  /* Solution option rows are read-only, so drop the pressed affordance. */
+  #sol-body .opt { cursor: default; }
+  #sol-body .opt:active { transform: none; }
+
+  /* ── Mobile-first sizing ─────────────────────────────────────── */
+  /* Touch targets: WCAG asks for ~44px; the compact web styling above is
+     tuned for a mouse, so every tappable control gets a floor here. */
+  .btn { min-height: 40px; padding: 9px 12px; }
+  .iconbtn { min-width: 40px; min-height: 40px; }
+  .pill { min-height: 32px; padding: 7px 12px; }
+  .sectab { min-height: 34px; }
+  .opt { padding: 12px; }
+  .pal-btn { height: 40px; font-size: 12px; }
+  .filter-pills { padding: 7px 12px; background: #0E1424; border-bottom: 1px solid var(--line); flex-shrink: 0; -webkit-overflow-scrolling: touch; }
+  .filter-pills::-webkit-scrollbar { display: none; }
+
+  /* Narrow phones: the bottom bar is the first thing to overflow, so its
+     labels shrink before anything else does. */
+  @media (max-width: 400px) {
+    body { font-size: 14px; }
+    .botbar { gap: 4px; padding: 7px 8px; }
+    .botbar .btn { font-size: 11px; padding: 9px 7px; }
+    .scroll { padding: 11px; }
+    .qcard, .sol-card { padding: 12px; }
+    .stats-grid { gap: 6px; }
+    .palette-grid { grid-template-columns: repeat(5, 1fr); }
+    .appbar { gap: 6px; padding-left: 8px; padding-right: 8px; }
+    .appbar .title h1 { font-size: 12px; }
+  }
+
+  /* Landscape phones have almost no vertical room — reclaim chrome height. */
+  @media (max-height: 460px) and (orientation: landscape) {
+    .appbar { padding-top: 4px; padding-bottom: 4px; }
+    .botbar { padding-top: 5px; padding-bottom: 5px; }
+    .comp-box { max-height: 110px; }
+    .palette-grid { max-height: 34vh; grid-template-columns: repeat(10, 1fr); }
+  }
+
+  /* Tablets and up can afford a wider reading column and denser grids. */
+  @media (min-width: 700px) {
+    .scroll { padding: 18px max(18px, calc((100% - 720px) / 2)); }
+    .stats-grid { grid-template-columns: repeat(4, 1fr); }
+    .palette-grid { grid-template-columns: repeat(10, 1fr); }
+    .donut-wrap { gap: 34px; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- ================= VIEW: INSTRUCTIONS ================= -->
+  <div id="v-instructions" class="hidden" style="display:flex; flex-direction:column; height:100vh;">
+    <div class="appbar">
+      <button class="iconbtn" onclick="bridgeClose()">✕</button>
+      <div class="title">
+        <h1 id="inst-title">Test Instructions</h1>
+        <p id="inst-sub">Read instructions carefully</p>
+      </div>
+    </div>
+    <div class="scroll">
+      <div class="fact-grid">
+        <div class="fact-card"><div class="lbl">Duration</div><div class="val" id="inst-dur">-- min</div></div>
+        <div class="fact-card"><div class="lbl">Questions</div><div class="val" id="inst-qc">--</div></div>
+        <div class="fact-card"><div class="lbl">Total Marks</div><div class="val" id="inst-tm">--</div></div>
+        <div class="fact-card"><div class="lbl">Negative Marking</div><div class="val" id="inst-neg">None</div></div>
+      </div>
+
+      <div class="qcard">
+        <div style="font-weight:700; font-size:13px; margin-bottom:6px;">Marking Scheme</div>
+        <div style="font-size:12px; color:var(--txt2);" id="inst-scheme">
+          • Correct answer: Positive marks vary per question<br>
+          • Wrong answer: Penalty applies where applicable<br>
+          • Unattempted: 0 marks
+        </div>
+      </div>
+
+      <div class="qcard" id="inst-sections-card">
+        <div style="font-weight:700; font-size:13px; margin-bottom:8px;">Sections in this Test</div>
+        <div id="inst-sec-list" style="display:flex; flex-direction:column; gap:6px; font-size:12px; color:var(--txt2);"></div>
+      </div>
+
+      <div class="qcard" id="inst-lang-card">
+        <div style="font-weight:700; font-size:13px; margin-bottom:6px;">Default Language</div>
+        <div id="inst-lang-btns" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
+      </div>
+
+      <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:var(--txt2); margin:14px 0;">
+        <input type="checkbox" id="inst-agreed" onchange="toggleStartBtn()">
+        I have read and understood all the instructions.
+      </label>
+    </div>
+    <div class="botbar">
+      <button class="btn btn-main" id="btn-start" disabled onclick="onStartClicked()">Start Test</button>
+    </div>
+  </div>
+
+  <!-- ================= VIEW: TEST TAKER ================= -->
+  <div id="v-taker" class="hidden" style="display:flex; flex-direction:column; height:100vh;">
+    <div class="appbar">
+      <div class="title">
+        <h1 id="taker-paper-title">Test</h1>
+        <p id="taker-q-progress">Section · Question 1 of 25</p>
+      </div>
+      <select class="lang-sel" id="taker-lang-sel" onchange="onLangChanged(this.value)"></select>
+      <div class="timer" id="taker-timer">00:00</div>
+      <button class="iconbtn" onclick="togglePalette()">☰</button>
+    </div>
+
+    <!-- Section Tabs Bar -->
+    <div class="sectabs" id="taker-sectabs"></div>
+
+    <div class="scroll" id="taker-scroll">
+      <!-- Comprehension Passage (if any) -->
+      <div id="taker-comp-wrap" class="hidden">
+        <div class="comp-box">
+          <div class="comp-header">Comprehension Passage</div>
+          <div class="qhtml" id="taker-comp-html"></div>
+        </div>
+      </div>
+
+      <!-- Question Card -->
+      <div class="qcard">
+        <div class="qmeta">
+          <span class="qnum" id="taker-qnum">Q1</span>
+          <span class="mtag pos" id="taker-pos">+1</span>
+          <span class="mtag neg" id="taker-neg">−0</span>
+          <span id="taker-type-label" style="font-size:10px; color:var(--txt3);"></span>
+        </div>
+        <div class="qhtml" id="taker-qhtml"></div>
+        <div class="opts" id="taker-opts"></div>
+        <input type="text" id="taker-num-input" class="num-input hidden" placeholder="Enter numeric answer" oninput="onNumericInput(this.value)">
+      </div>
+    </div>
+
+    <!-- Bottom Action Bar -->
+    <div class="botbar">
+      <button class="btn btn-sub" id="btn-prev" onclick="prevQuestion()">Previous</button>
+      <button class="btn btn-sub" onclick="clearCurrentAnswer()">Clear</button>
+      <button class="btn btn-mark" id="btn-mark" onclick="toggleBookmark()">Review</button>
+      <button class="btn btn-main" onclick="saveAndNext()">Save & Next</button>
+      <button class="btn btn-danger" onclick="showSubmitConfirm()">Submit</button>
+    </div>
+  </div>
+
+  <!-- ================= VIEW: RESULT / ANALYTICS ================= -->
+  <div id="v-result" class="hidden" style="display:flex; flex-direction:column; height:100vh;">
+    <div class="appbar">
+      <button class="iconbtn" onclick="bridgeClose()">✕</button>
+      <div class="title">
+        <h1 id="res-test-title">Result & Analysis</h1>
+        <p id="res-test-sub">Performance scorecard</p>
+      </div>
+    </div>
+    <div class="scroll">
+      <!-- Big Scorecard -->
+      <div class="score-hero">
+        <div class="score-val" id="res-score">0 / 0</div>
+        <div class="score-sub" id="res-score-sub">Total Score Achieved</div>
+        <div id="res-percentile-band" class="chip-row" style="justify-content:center;"></div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card"><div class="v" id="res-acc" style="color:var(--green)">0%</div><div class="l">Accuracy</div></div>
+        <div class="stat-card"><div class="v" id="res-pct">0%</div><div class="l">Percentage</div></div>
+        <div class="stat-card"><div class="v" id="res-att">0 / 0</div><div class="l">Attempted</div></div>
+        <div class="stat-card"><div class="v" id="res-speed">--s</div><div class="l">Avg / Question</div></div>
+      </div>
+
+      <!-- Unscored Notice if any -->
+      <div id="res-unscored-notice" class="qcard hidden" style="background:var(--amber-soft); border-color:var(--amber); color:var(--amber);">
+        <div style="font-weight:700; font-size:12px;">Answer key pending for some questions</div>
+        <div style="font-size:11px; margin-top:2px;" id="res-unscored-text">Official answer keys and explanations are still synchronizing upstream.</div>
+      </div>
+
+      <!-- Visual Donut Chart -->
+      <div class="chart-box">
+        <div class="chart-title"><span>Question Breakdown</span><span id="res-tot-q" style="font-size:10px; color:var(--txt2);"></span></div>
+        <div class="donut-wrap">
+          <svg id="res-donut-svg" width="132" height="132" viewBox="0 0 42 42"></svg>
+          <div style="font-size:11px; display:flex; flex-direction:column; gap:5px;" id="res-donut-legend"></div>
+        </div>
+      </div>
+
+      <!-- Accuracy vs Attempt Rate gauges -->
+      <div class="chart-box">
+        <div class="chart-title">Accuracy &amp; Coverage</div>
+        <div class="gauge-wrap">
+          <svg id="res-gauge-acc" width="96" height="60" viewBox="0 0 100 60"></svg>
+          <svg id="res-gauge-cov" width="96" height="60" viewBox="0 0 100 60"></svg>
+        </div>
+        <div class="gauge-txt" id="res-gauge-note"></div>
+      </div>
+
+      <!-- Marks Composition Waterfall -->
+      <div class="chart-box">
+        <div class="chart-title">Marks Composition</div>
+        <svg id="res-marks-svg" width="100%" height="130" preserveAspectRatio="none"></svg>
+        <div class="mini-legend">
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--green)"></span> Marks Earned</span>
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--red)"></span> Negative Penalty</span>
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#334155"></span> Marks Lost</span>
+        </div>
+      </div>
+
+      <!-- Section Performance Bars -->
+      <div class="chart-box" id="res-sec-bars-box">
+        <div class="chart-title"><span>Section-Wise Performance</span></div>
+        <div id="res-sec-bars"></div>
+      </div>
+
+      <!-- Subject Radar -->
+      <div class="chart-box hidden" id="res-radar-box">
+        <div class="chart-title">Subject Accuracy Radar</div>
+        <svg id="res-radar-svg" width="100%" height="220" viewBox="0 0 240 220"></svg>
+      </div>
+
+      <!-- Subject-Wise Grouped Bars -->
+      <div class="chart-box hidden" id="res-subj-box">
+        <div class="chart-title">Subject Breakdown</div>
+        <div id="res-subj-bars"></div>
+      </div>
+
+      <!-- Tag-Wise Grouped Bars -->
+      <div class="chart-box hidden" id="res-tag-box">
+        <div class="chart-title">Concept Tag Breakdown</div>
+        <div id="res-tag-bars"></div>
+      </div>
+
+      <!-- Difficulty Distribution -->
+      <div class="chart-box hidden" id="res-diff-box">
+        <div class="chart-title">Difficulty-Wise Accuracy</div>
+        <svg id="res-diff-svg" width="100%" height="140" preserveAspectRatio="none"></svg>
+        <div id="res-diff-legend" class="mini-legend"></div>
+      </div>
+
+      <!-- Cohort Comparison -->
+      <div class="chart-box hidden" id="res-cohort-box">
+        <div class="chart-title">You vs Cohort</div>
+        <div id="res-cohort-body"></div>
+      </div>
+
+      <!-- Time Distribution Histogram -->
+      <div class="chart-box hidden" id="res-time-box">
+        <div class="chart-title">Time Spent Distribution</div>
+        <svg id="res-time-svg" width="100%" height="130" preserveAspectRatio="none"></svg>
+        <div class="gauge-txt" id="res-time-note"></div>
+      </div>
+
+      <!-- Behaviour Insights -->
+      <div class="chart-box hidden" id="res-behav-box">
+        <div class="chart-title">Attempt Behaviour</div>
+        <div id="res-behav-body"></div>
+      </div>
+
+      <!-- Topic Strength / Weakness -->
+      <div class="chart-box hidden" id="res-topic-box">
+        <div class="chart-title"><span>Topic Strength Matrix</span><button class="sec-toggle" id="res-topic-toggle" onclick="toggleTopicRows()">Show all</button></div>
+        <table class="kv-table"><thead>
+          <tr><th>Topic</th><th style="text-align:right">Qs</th><th style="text-align:right">Score</th><th style="text-align:right">Accuracy</th></tr>
+        </thead><tbody id="res-topic-rows"></tbody></table>
+      </div>
+    </div>
+
+    <div class="botbar">
+      <button class="btn btn-main" onclick="openSolutionsView()">View Detailed Solutions</button>
+    </div>
+  </div>
+
+  <!-- ================= VIEW: SOLUTIONS REVIEW ================= -->
+  <div id="v-solutions" class="hidden" style="display:flex; flex-direction:column; height:100vh;">
+    <div class="appbar">
+      <button class="iconbtn" onclick="backFromSolutions()">←</button>
+      <div class="title">
+        <h1 id="sol-title">Solutions Review</h1>
+        <p id="sol-sub">Step-by-step explanations</p>
+      </div>
+      <select class="lang-sel" id="sol-lang-sel" onchange="onSolLangChanged(this.value)"></select>
+      <button class="iconbtn" onclick="toggleSolPalette()">☰</button>
+    </div>
+
+    <!-- Section tabs, mirroring the taker's section-scoped navigation -->
+    <div class="sectabs" id="sol-sectabs"></div>
+
+    <!-- Status filter pills -->
+    <div class="filter-pills" id="sol-filters">
+      <button class="pill active" data-f="all" onclick="filterSolutions('all', this)">All</button>
+      <button class="pill" data-f="correct" onclick="filterSolutions('correct', this)">Correct</button>
+      <button class="pill" data-f="incorrect" onclick="filterSolutions('incorrect', this)">Incorrect</button>
+      <button class="pill" data-f="skipped" onclick="filterSolutions('skipped', this)">Skipped</button>
+      <button class="pill" data-f="partial" onclick="filterSolutions('partial', this)">Partial</button>
+      <button class="pill" data-f="unscored" onclick="filterSolutions('unscored', this)">Unscored</button>
+      <button class="pill" data-f="bookmarked" onclick="filterSolutions('bookmarked', this)">Review</button>
+    </div>
+
+    <!-- One question at a time, exactly like the taker -->
+    <div class="scroll" id="sol-scroll">
+      <div id="sol-comp-wrap" class="hidden">
+        <div class="comp-box">
+          <div class="comp-header">Comprehension Passage</div>
+          <div class="qhtml" id="sol-comp-html"></div>
+        </div>
+      </div>
+
+      <div class="qcard">
+        <div class="qmeta">
+          <span class="qnum" id="sol-qnum">Q1</span>
+          <span class="mtag" id="sol-status">—</span>
+          <span class="mtag" id="sol-marks">0</span>
+          <span id="sol-time" style="margin-left:auto; font-size:10px; color:var(--txt3);"></span>
+        </div>
+        <div id="sol-sec-label" style="font-size:9px; text-transform:uppercase; color:var(--txt3); margin-bottom:6px;"></div>
+        <div class="qhtml" id="sol-qhtml"></div>
+        <div id="sol-body"></div>
+
+        <!-- Collapsible explanation -->
+        <div id="sol-exp-wrap" class="acc" style="margin-top:12px;">
+          <button class="acc-head" id="sol-exp-head" onclick="toggleSolExplanation()" aria-expanded="false">
+            <span class="acc-title">Explanation</span>
+            <span class="acc-caret" id="sol-exp-caret">▾</span>
+          </button>
+          <div class="acc-body hidden" id="sol-exp-body">
+            <div class="solhtml" id="sol-exp-html"></div>
+          </div>
+        </div>
+
+        <div id="sol-extras"></div>
+      </div>
+    </div>
+
+    <!-- Taker-style bottom navigation -->
+    <div class="botbar">
+      <button class="btn btn-sub" id="sol-btn-prev" onclick="solPrev()">Previous</button>
+      <button class="btn btn-sub" onclick="toggleSolPalette()">Palette</button>
+      <button class="btn btn-main" id="sol-btn-next" onclick="solNext()">Next</button>
+    </div>
+  </div>
+
+  <!-- ================= SOLUTIONS PALETTE DRAWER ================= -->
+  <div id="sol-palette-modal" class="palette-drawer hidden" onclick="if(event.target===this)toggleSolPalette()">
+    <div class="palette-sheet">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <div style="font-weight:700; font-size:13px;" id="sol-pal-name">Question Palette</div>
+        <button class="iconbtn" onclick="toggleSolPalette()">✕</button>
+      </div>
+      <div class="legend">
+        <div class="leg-item"><span class="leg-dot" style="background:var(--green)"></span> Correct</div>
+        <div class="leg-item"><span class="leg-dot" style="background:var(--red)"></span> Incorrect</div>
+        <div class="leg-item"><span class="leg-dot" style="background:var(--amber)"></span> Partial</div>
+        <div class="leg-item"><span class="leg-dot" style="background:#475569"></span> Skipped</div>
+        <div class="leg-item"><span class="leg-dot" style="background:var(--accent)"></span> Ungraded</div>
+      </div>
+      <div class="palette-grid" id="sol-palette-btns"></div>
+    </div>
+  </div>
+
+  <!-- ================= VIEW: LIFETIME STATS DASHBOARD ================= -->
+  <div id="v-stats" class="hidden" style="display:flex; flex-direction:column; height:100vh;">
+    <div class="appbar">
+      <button class="iconbtn" onclick="bridgeClose()">✕</button>
+      <div class="title">
+        <h1>Performance Dashboard</h1>
+        <p id="stats-sub">Lifetime analytics across all attempts</p>
+      </div>
+    </div>
+    <div class="scroll">
+      <div class="score-hero">
+        <div class="score-val" id="st-score">0 / 0</div>
+        <div class="score-sub">Cumulative Marks Scored</div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="v" id="st-tests">0</div><div class="l">Tests Submitted</div></div>
+        <div class="stat-card"><div class="v" id="st-acc" style="color:var(--green)">0%</div><div class="l">Avg Accuracy</div></div>
+        <div class="stat-card"><div class="v" id="st-pct">0%</div><div class="l">Overall %</div></div>
+        <div class="stat-card"><div class="v" id="st-time">0h</div><div class="l">Time Invested</div></div>
+      </div>
+
+      <div class="chart-box hidden" id="st-trend-box">
+        <div class="chart-title">Score Trend</div>
+        <svg id="st-trend-svg" width="100%" height="170" viewBox="0 0 320 170" preserveAspectRatio="none"></svg>
+        <div class="mini-legend">
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#2DD4BF"></span> Percentage</span>
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--purple)"></span> Accuracy</span>
+        </div>
+      </div>
+
+      <div class="chart-box hidden" id="st-subj-box">
+        <div class="chart-title">Subject Accuracy</div>
+        <div id="st-subj-bars"></div>
+      </div>
+
+      <div class="chart-box hidden" id="st-strength-box">
+        <div class="chart-title">Strengths &amp; Weaknesses</div>
+        <div style="font-size:10px; text-transform:uppercase; color:var(--txt3); margin-bottom:4px;">Strongest</div>
+        <div class="chip-row" id="st-strong"></div>
+        <div style="font-size:10px; text-transform:uppercase; color:var(--txt3); margin:10px 0 4px;">Needs Work</div>
+        <div class="chip-row" id="st-weak"></div>
+      </div>
+
+      <div class="chart-box hidden" id="st-diff-box">
+        <div class="chart-title">Difficulty Mastery</div>
+        <div id="st-diff-bars"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= VIEW: ATTEMPT HISTORY ================= -->
+  <div id="v-history" class="hidden" style="display:flex; flex-direction:column; height:100vh;">
+    <div class="appbar">
+      <button class="iconbtn" onclick="bridgeClose()">✕</button>
+      <div class="title">
+        <h1>Attempt History</h1>
+        <p id="hist-sub">Your previous test attempts</p>
+      </div>
+    </div>
+    <div style="padding:6px 12px; background:#0E1424; border-bottom:1px solid var(--line);">
+      <div class="filter-pills" id="hist-filters">
+        <button class="pill active" onclick="filterHistory('all', this)">All</button>
+        <button class="pill" onclick="filterHistory('submitted', this)">Submitted</button>
+        <button class="pill" onclick="filterHistory('in_progress', this)">In Progress</button>
+      </div>
+    </div>
+    <div class="scroll" id="hist-list"></div>
+  </div>
+
+  <!-- ================= PALETTE DRAWER ================= -->
+  <div id="palette-modal" class="palette-drawer hidden" onclick="if(event.target===this)togglePalette()">
+    <div class="palette-sheet">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <div style="font-weight:700; font-size:13px;" id="pal-sec-name">Question Palette</div>
+        <button class="iconbtn" onclick="togglePalette()">✕</button>
+      </div>
+      <div class="legend">
+        <div class="leg-item"><span class="leg-dot" style="background:var(--green)"></span> Answered</div>
+        <div class="leg-item"><span class="leg-dot" style="background:var(--red)"></span> Unanswered</div>
+        <div class="leg-item"><span class="leg-dot" style="background:var(--purple)"></span> Review</div>
+        <div class="leg-item"><span class="leg-dot" style="background:var(--accent)"></span> Ans+Rev</div>
+        <div class="leg-item"><span class="leg-dot" style="background:#1E293B"></span> Unvisited</div>
+      </div>
+      <div class="palette-grid" id="palette-btns"></div>
+    </div>
+  </div>
+
+  <!-- ================= SUBMIT CONFIRM MODAL ================= -->
+  <div id="submit-modal" class="palette-drawer hidden" onclick="if(event.target===this)hideSubmitConfirm()">
+    <div class="palette-sheet">
+      <div style="font-size:15px; font-weight:700; margin-bottom:8px;">Submit Exam?</div>
+      <div id="submit-summary-text" style="font-size:12px; color:var(--txt2); margin-bottom:14px; line-height:1.5;"></div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-sub" style="flex:1;" onclick="hideSubmitConfirm()">Cancel</button>
+        <button class="btn btn-danger" style="flex:1;" onclick="doSubmitExam()">Confirm Submit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= SPINNER ================= -->
+  <div id="v-spinner" class="center-col">
+    <div class="spin"></div>
+    <div style="font-size:12px; color:var(--txt2);" id="spinner-lbl">Loading Exam...</div>
+    <button class="btn btn-sub hidden" id="spinner-action" onclick="bridgeClose()">Go Back</button>
+  </div>
+
+<script>
+// State Store
+let gPaper = null;
+let gFlat = [];
+let gAnswers = {};
+let gCursor = 0;
+let gLang = 'en';
+let gTimeLeft = 0;
+let gTimerInterval = null;
+let gAutosaveInterval = null;
+let gAttemptId = null;
+let gResultData = null;
+let gSolutionsData = null;
+let gStatsData = null;
+let gHistoryData = [];
+let gInitialConfig = {};
+let gSolFilter = 'all';
+let gTopicExpanded = false;
+/** Question id the taker last rendered, so re-renders don't count as visits. */
+let gRenderedQid = null;
+/** Solutions review navigator state (mirrors the taker's cursor model). */
+let gSolFlat = [];
+let gSolCursor = 0;
+let gSolSections = [];
+let gSolSectionId = '';
+
+const VIEWS = ['v-instructions', 'v-taker', 'v-result', 'v-solutions', 'v-stats', 'v-history', 'v-spinner'];
+
+// Bridge helpers
+async function bridge(name, data) {
+  if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+    try {
+      return await window.flutter_inappwebview.callHandler(name, data);
+    } catch (e) {
+      return { error: String(e) };
+    }
+  }
+  return null;
+}
+function bridgeClose() { bridge('close'); }
+
+function showView(id) {
+  VIEWS.forEach(v => {
+    const el = document.getElementById(v);
+    if (el) el.classList.toggle('hidden', v !== id);
+  });
+}
+
+function spinner(label) {
+  const el = document.getElementById('spinner-lbl');
+  if (el) el.innerText = label;
+  const act = document.getElementById('spinner-action');
+  if (act) act.classList.add('hidden');
+  showView('v-spinner');
+}
+
+/** Terminal state with a way out, used for upstream PRO locks. */
+function lockedNotice(message) {
+  const el = document.getElementById('spinner-lbl');
+  if (el) el.innerText = message;
+  const spin = document.querySelector('#v-spinner .spin');
+  if (spin) spin.classList.add('hidden');
+  const act = document.getElementById('spinner-action');
+  if (act) act.classList.remove('hidden');
+  showView('v-spinner');
+}
+
+/** Escape a value for safe insertion into a text node or attribute. */
+function esc(v) {
+  return String(v === null || v === undefined ? '' : v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function num(v, dp) {
+  const n = Number(v);
+  if (!isFinite(n)) return dp ? (0).toFixed(dp) : '0';
+  return dp !== undefined ? n.toFixed(dp) : String(Math.round(n * 100) / 100);
+}
+
+/** Accuracy → heat class for tables and chips. */
+function heatClass(accuracy) {
+  const a = Number(accuracy) || 0;
+  if (a >= 70) return 'hi';
+  if (a >= 40) return 'mid';
+  return 'lo';
+}
+
+function renderMath(el) {
+  if (window.renderMathInElement && el) {
+    try {
+      renderMathInElement(el, {
+        delimiters: [
+          {left: '$$', right: '$$', display: true},
+          {left: '$', right: '$', display: false},
+          {left: '\\(', right: '\\)', display: false},
+          {left: '\\[', right: '\\]', display: true}
+        ],
+        throwOnError: false
+      });
+    } catch(e) {}
+  }
+}
+
+// Format seconds to mm:ss or hh:mm:ss
+function fmtTime(s) {
+  s = Math.max(0, Math.floor(s));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+}
+
+// ─── INITIALIZATION ────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+  gInitialConfig = window.__TBV2_CONFIG__ || {};
+  const { initialView, attemptId, language } = gInitialConfig;
+  if (language) gLang = String(language);
+
+  if (initialView === 'result' && attemptId) {
+    gAttemptId = attemptId;
+    loadResultView(attemptId);
+  } else if (initialView === 'solutions' && attemptId) {
+    gAttemptId = attemptId;
+    loadSolutionsView(attemptId);
+  } else if (initialView === 'stats') {
+    loadStatsView();
+  } else if (initialView === 'history') {
+    loadHistoryView();
+  } else {
+    loadInstructions();
+  }
+});
+
+// Flutter calls this from the hardware/AppBar back button.
+window.tbv2HandleBack = function () {
+  const taker = document.getElementById('v-taker');
+  if (taker && !taker.classList.contains('hidden')) {
+    showSubmitConfirm();
+    return 'blocked';
+  }
+  const sol = document.getElementById('v-solutions');
+  if (sol && !sol.classList.contains('hidden') && gResultData) {
+    showView('v-result');
+    return 'blocked';
+  }
+  return 'pop';
+};
+
+// ─── VIEW 1: INSTRUCTIONS ──────────────────────────────────────────────────
+async function loadInstructions() {
+  spinner('Loading instructions...');
+  const inst = await bridge('fetchInstructions', gInitialConfig);
+  if (!inst || !inst.instructions) {
+    spinner((inst && inst.error) ? `Failed: ${inst.error}` : 'Failed to load test details.');
+    return;
+  }
+  const d = inst.instructions;
+  document.getElementById('inst-title').innerText = d.title || 'Exam Instructions';
+  document.getElementById('inst-sub').innerText = `${d.totalQuestions || 0} questions · ${d.durationMinutes || 0} minutes`;
+  document.getElementById('inst-dur').innerText = `${d.durationMinutes || 0} min`;
+  document.getElementById('inst-qc').innerText = d.totalQuestions || 0;
+  document.getElementById('inst-tm').innerText = num(d.totalMarks);
+  document.getElementById('inst-neg').innerText = d.hasNegativeMarking ? `−${num(d.maxNegativeMarks)}` : 'None';
+
+  // Marking scheme built from the paper's real per-question marks.
+  const perQ = (d.marksPerQuestion || []).map(m => `+${num(m)}`).join(', ') || '+1';
+  document.getElementById('inst-scheme').innerHTML = `
+    • Correct answer: <b>${esc(perQ)}</b> marks<br>
+    • Wrong answer: <b>${d.hasNegativeMarking ? '−' + num(d.maxNegativeMarks) : '0'}</b> marks<br>
+    • Unattempted: <b>0</b> marks<br>
+    • ${d.hasSectionTimers ? 'This paper has <b>section-wise timers</b>.' : 'A single timer covers the whole paper.'}
+  `;
+
+  // Sections
+  const secList = document.getElementById('inst-sec-list');
+  const sections = d.sections || [];
+  secList.innerHTML = sections.length === 0
+    ? '<div class="empty-note">Section details unavailable.</div>'
+    : sections.map((s, i) => `
+      <div style="display:flex; justify-content:space-between; gap:8px;">
+        <span style="flex:1; min-width:0;">${esc(s.title || 'Section ' + (i + 1))}</span>
+        <span style="white-space:nowrap;">${s.qCount || 0} Qs${s.timeLimit > 0 ? ` · ${num(s.timeLimit, 0)}m` : ''}</span>
+      </div>
+    `).join('');
+
+  // Language buttons — engine ships full language code list per paper.
+  const langBtns = document.getElementById('inst-lang-btns');
+  const codes = (d.languageCodes && d.languageCodes.length) ? d.languageCodes : ['en'];
+  gLang = codes.includes(gLang) ? gLang : (codes.includes('en') ? 'en' : codes[0]);
+  langBtns.innerHTML = codes.map(c => `
+    <button class="pill ${c === gLang ? 'active' : ''}" onclick="setInstLang('${esc(c)}', this)">${esc(langName(c))}</button>
+  `).join('');
+
+  showView('v-instructions');
+}
+
+const LANG_NAMES = {
+  en: 'English', hn: 'हिन्दी', te: 'తెలుగు', mr: 'मराठी', bn: 'বাংলা', ml: 'മലയാളം',
+  gu: 'ગુજરાતી', kn: 'ಕನ್ನಡ', ta: 'தமிழ்', or: 'ଓଡ଼ିଆ', as: 'অসমীয়া', pa: 'ਪੰਜਾਬੀ',
+  ur: 'اردو', sa: 'संस्कृतम्', ne: 'नेपाली', sd: 'سنڌي', ks: 'كٲشُر', kok: 'कोंकणी',
+  mni: 'ꯃꯤꯇꯩ', sat: 'ᱥᱟᱱᱛᱟᱲᱤ', mai: 'मैथिली', brx: 'बड़ो', doi: 'डोगरी', bo: 'བོད་སྐད',
+};
+function langName(code) { return LANG_NAMES[code] || String(code).toUpperCase(); }
+
+function setInstLang(code, btn) {
+  gLang = code;
+  document.querySelectorAll('#inst-lang-btns .pill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function toggleStartBtn() {
+  document.getElementById('btn-start').disabled = !document.getElementById('inst-agreed').checked;
+}
+
+async function onStartClicked() {
+  spinner('Preparing your exam...');
+  const startRes = await bridge('startAttempt', { language: gLang });
+  if (!startRes || !startRes.paper) {
+    // A 402 means the master PRO account could not unlock this test upstream.
+    // That is a plan state, not a transport failure, so it gets its own message
+    // with a way back instead of a dead spinner.
+    if (startRes && startRes.locked) {
+      lockedNotice(startRes.lockedMessage || 'This test needs an active PRO plan upstream.');
+      return;
+    }
+    spinner((startRes && startRes.error) ? `Could not start: ${startRes.error}` : 'Could not start this test.');
+    return;
+  }
+  gPaper = startRes.paper;
+  gAttemptId = (startRes.attempt && startRes.attempt.attemptId) || null;
+  gTimeLeft = (startRes.attempt && startRes.attempt.timeLeft) || (gPaper.durationMinutes || 30) * 60;
+
+  buildFlatQuestions();
+
+  // Restore saved responses when resuming (upstream or our own row). The visit
+  // logs come back too, so a resumed attempt keeps its behaviour telemetry
+  // instead of restarting the change/revisit counters at zero.
+  gAnswers = {};
+  gRenderedQid = null;
+  const saved = startRes.savedResponses || {};
+  Object.keys(saved).forEach(qid => {
+    const resp = saved[qid] || {};
+    const rawMarked = resp.markedOption;
+    const marked = rawMarked === null || rawMarked === undefined
+      ? []
+      : (Array.isArray(rawMarked)
+          ? rawMarked.map(String)
+          : String(rawMarked).split(',').map(s => s.trim()).filter(Boolean));
+    const visits = Array.isArray(resp.visits) ? resp.visits : [];
+    const logs = [];
+    visits.forEach((v, vi) => {
+      (Array.isArray(v.logs) ? v.logs : []).forEach((log) => {
+        logs.push({ t: log.t, at: Number(log.at) || 0, v: String(log.v ?? ''), visit: vi });
+      });
+    });
+    gAnswers[qid] = {
+      marked,
+      numericValue: marked.length === 1 ? marked[0] : '',
+      isBookmarked: resp.isBookmarked === true,
+      timeSpent: Number(resp.time) || 0,
+      visitCount: visits.length,
+      changes: Math.max(0, logs.filter(l => l.t === 'mo').length - 1),
+      logs,
+      lang: resp.lang || gLang,
+      visitElapsed: 0,
+    };
+  });
+
+  startExamTaker();
+}
+
+/** Flatten sections into a single navigable list, keeping section coordinates. */
+function buildFlatQuestions() {
+  gFlat = [];
+  (gPaper.sections || []).forEach((sec, si) => {
+    const qs = sec.questions || [];
+    qs.forEach((q, qi) => {
+      gFlat.push({
+        question: q,
+        sectionIndex: si,
+        sectionId: sec.id,
+        sectionTitle: sec.title || `Section ${si + 1}`,
+        globalIndex: gFlat.length + 1,
+        sectionLocalIndex: qi + 1,
+        sectionQuestionCount: qs.length,
+      });
+    });
+  });
+}
+
+// ─── VIEW 2: TEST TAKER ────────────────────────────────────────────────────
+function startExamTaker() {
+  document.getElementById('taker-paper-title').innerText = gPaper.title || 'Test';
+
+  // Language selector
+  const langSel = document.getElementById('taker-lang-sel');
+  const langs = (gPaper.languageCodes && gPaper.languageCodes.length) ? gPaper.languageCodes : ['en'];
+  langSel.innerHTML = langs.map(l => `<option value="${esc(l)}" ${l === gLang ? 'selected' : ''}>${esc(langName(l))}</option>`).join('');
+
+  // Section tabs. The time badge only appears when the paper actually carries a
+  // per-section limit; the upstream contract leaves `time` at 0 for most papers.
+  const sectabs = document.getElementById('taker-sectabs');
+  sectabs.innerHTML = (gPaper.sections || []).map((sec, si) => `
+    <button class="sectab ${si === 0 ? 'active' : ''}" id="sectab-${si}" onclick="jumpToSection(${si})">
+      <span>${esc(sec.title || 'Section ' + (si + 1))}</span>
+      <span class="badge">${(sec.questions || []).length}</span>
+      ${Number(sec.timeLimit) > 0 ? `<span class="badge">${num(sec.timeLimit, 0)}m</span>` : ''}
+    </button>
+  `).join('');
+
+  if (gTimerInterval) clearInterval(gTimerInterval);
+  document.getElementById('taker-timer').innerText = fmtTime(gTimeLeft);
+  gTimerInterval = setInterval(() => {
+    if (gTimeLeft <= 1) {
+      clearInterval(gTimerInterval);
+      gTimerInterval = null;
+      doSubmitExam(true);
+      return;
+    }
+    gTimeLeft -= 1;
+    const t = document.getElementById('taker-timer');
+    t.innerText = fmtTime(gTimeLeft);
+    if (gTimeLeft <= 300) t.classList.add('urgent');
+    // Attribute the tick to the question currently on screen. visitElapsed is
+    // the `at` offset for log entries, so it restarts on every visit.
+    const curr = gFlat[gCursor];
+    if (curr) {
+      const a = gAnswers[curr.question.id] || initAnswer();
+      a.timeSpent = (a.timeSpent || 0) + 1;
+      a.visitElapsed = (a.visitElapsed || 0) + 1;
+      gAnswers[curr.question.id] = a;
+    }
+  }, 1000);
+
+  if (gAutosaveInterval) clearInterval(gAutosaveInterval);
+  gAutosaveInterval = setInterval(flushAutosave, 15000);
+
+  gCursor = 0;
+  showView('v-taker');
+  renderCurrentQuestion();
+}
+
+function initAnswer() {
+  return {
+    marked: [], numericValue: '', isBookmarked: false, timeSpent: 0,
+    visitCount: 0, changes: 0, logs: [], lang: gLang, visitElapsed: 0,
+  };
+}
+
+/** Append an upstream telemetry log entry, tagged with its visit index. */
+function pushLog(a, type, value) {
+  a.logs = a.logs || [];
+  a.logs.push({
+    t: type,
+    at: a.visitElapsed || 0,
+    v: String(value),
+    visit: Math.max(0, (a.visitCount || 1) - 1),
+  });
+}
+
+function jumpToSection(si) {
+  const target = gFlat.find(f => f.sectionIndex === si);
+  if (target) {
+    gCursor = target.globalIndex - 1;
+    renderCurrentQuestion();
+  }
+}
+
+function renderCurrentQuestion() {
+  const curr = gFlat[gCursor];
+  if (!curr) return;
+  const q = curr.question;
+  const block = (q.byLang && (q.byLang[gLang] || q.byLang[q.defaultLang])) || (q.byLang ? Object.values(q.byLang)[0] : null) || {};
+  const a = gAnswers[q.id] || initAnswer();
+  // A visit is arriving at the question, not every re-render. Option taps and
+  // language switches re-render too, and counting those would inflate the
+  // revisit metric the BFF derives from visits.length.
+  if (gRenderedQid !== q.id) {
+    a.visitCount = (a.visitCount || 0) + 1;
+    a.visitElapsed = 0;
+    gRenderedQid = q.id;
+  }
+  gAnswers[q.id] = a;
+
+  document.getElementById('taker-q-progress').innerText =
+    `${curr.sectionTitle} · Question ${curr.sectionLocalIndex} of ${curr.sectionQuestionCount}`;
+  document.getElementById('taker-qnum').innerText = `Q${curr.sectionLocalIndex}`;
+  document.getElementById('taker-pos').innerText = `+${num(q.posMarks)}`;
+  const negEl = document.getElementById('taker-neg');
+  negEl.innerText = Number(q.negMarks) > 0 ? `−${num(q.negMarks)}` : '0';
+  negEl.classList.toggle('hidden', !(Number(q.negMarks) > 0));
+
+  const isNumeric = q.isNum === true || q.type === 'numeric';
+  const isMulti = q.type === 'multi_select' || q.type === 'msq';
+  document.getElementById('taker-type-label').innerText =
+    isNumeric ? 'NUMERIC ANSWER' : (isMulti ? 'MULTI SELECT' : 'SINGLE CHOICE');
+
+  document.querySelectorAll('.sectab').forEach((t, i) => t.classList.toggle('active', i === curr.sectionIndex));
+  const activeTab = document.getElementById(`sectab-${curr.sectionIndex}`);
+  if (activeTab && activeTab.scrollIntoView) activeTab.scrollIntoView({ inline: 'center', block: 'nearest' });
+
+  // Comprehension passage
+  const compWrap = document.getElementById('taker-comp-wrap');
+  if (block.comprehension) {
+    compWrap.classList.remove('hidden');
+    const compEl = document.getElementById('taker-comp-html');
+    compEl.innerHTML = block.comprehension;
+    renderMath(compEl);
+  } else {
+    compWrap.classList.add('hidden');
+  }
+
+  const qhtml = document.getElementById('taker-qhtml');
+  qhtml.innerHTML = block.text || '<p style="color:#64748B">Question text unavailable in this language.</p>';
+  renderMath(qhtml);
+
+  const optsContainer = document.getElementById('taker-opts');
+  const numInput = document.getElementById('taker-num-input');
+  if (isNumeric) {
+    optsContainer.classList.add('hidden');
+    optsContainer.innerHTML = '';
+    numInput.classList.remove('hidden');
+    numInput.value = a.numericValue || '';
+  } else {
+    numInput.classList.add('hidden');
+    optsContainer.classList.remove('hidden');
+    const opts = block.options || [];
+    optsContainer.innerHTML = opts.length === 0
+      ? '<div class="empty-note">Options unavailable in this language.</div>'
+      : opts.map(opt => {
+          const isSel = a.marked.indexOf(opt.prompt) !== -1;
+          return `
+            <div class="opt ${isSel ? 'sel' : ''}" onclick="onOptionTapped(${JSON.stringify(String(opt.prompt)).replace(/"/g, '&quot;')})">
+              <div class="opt-idx">${esc(opt.prompt)}</div>
+              <div class="opt-txt ohtml">${opt.value || esc(opt.prompt)}</div>
+            </div>
+          `;
+        }).join('');
+    renderMath(optsContainer);
+  }
+
+  document.getElementById('btn-mark').classList.toggle('marked', a.isBookmarked);
+  document.getElementById('btn-prev').disabled = gCursor === 0;
+  document.getElementById('taker-scroll').scrollTop = 0;
+}
+
+function onOptionTapped(prompt) {
+  const curr = gFlat[gCursor];
+  if (!curr) return;
+  const q = curr.question;
+  const a = gAnswers[q.id] || initAnswer();
+  const had = a.marked.length > 0;
+  if (q.type === 'multi_select' || q.type === 'msq') {
+    if (a.marked.indexOf(prompt) !== -1) a.marked = a.marked.filter(p => p !== prompt);
+    else a.marked = a.marked.concat([prompt]).sort();
+  } else {
+    // Tapping the selected option again clears it, matching the web taker.
+    if (had && a.marked[0] === prompt) a.marked = [];
+    else {
+      if (had) a.changes = (a.changes || 0) + 1;
+      a.marked = [prompt];
+    }
+  }
+  a.lang = gLang;
+  pushLog(a, 'mo', a.marked.join(','));
+  gAnswers[q.id] = a;
+  renderCurrentQuestion();
+}
+
+function onNumericInput(val) {
+  const curr = gFlat[gCursor];
+  if (!curr) return;
+  const a = gAnswers[curr.question.id] || initAnswer();
+  // Upstream only accepts digits, a decimal point and a leading minus.
+  const cleaned = String(val).replace(/[^0-9.\-]/g, '');
+  a.numericValue = cleaned;
+  a.marked = cleaned ? [cleaned] : [];
+  a.lang = gLang;
+  pushLog(a, 'mo', cleaned);
+  gAnswers[curr.question.id] = a;
+  const input = document.getElementById('taker-num-input');
+  if (input && input.value !== cleaned) input.value = cleaned;
+}
+
+function clearCurrentAnswer() {
+  const curr = gFlat[gCursor];
+  if (!curr) return;
+  const a = gAnswers[curr.question.id] || initAnswer();
+  a.marked = [];
+  a.numericValue = '';
+  pushLog(a, 'mo', '');
+  gAnswers[curr.question.id] = a;
+  renderCurrentQuestion();
+}
+
+function toggleBookmark() {
+  const curr = gFlat[gCursor];
+  if (!curr) return;
+  const a = gAnswers[curr.question.id] || initAnswer();
+  a.isBookmarked = !a.isBookmarked;
+  // Only the set event is logged upstream; unsetting leaves the log intact.
+  if (a.isBookmarked) pushLog(a, 'b', 'bfsn');
+  gAnswers[curr.question.id] = a;
+  renderCurrentQuestion();
+}
+
+function prevQuestion() {
+  if (gCursor > 0) {
+    gCursor -= 1;
+    renderCurrentQuestion();
+  }
+}
+
+// Auto next question & auto next section on crossing section boundaries
+function saveAndNext() {
+  if (gCursor < gFlat.length - 1) {
+    gCursor += 1;
+    renderCurrentQuestion();
+  } else {
+    showSubmitConfirm();
+  }
+}
+
+function onLangChanged(code) {
+  gLang = code;
+  renderCurrentQuestion();
+}
+
+// ─── PALETTE DRAWER ────────────────────────────────────────────────────────
+/** Status bucket for a question, shared by the palette and the submit summary. */
+function statusOf(f) {
+  const a = gAnswers[f.question.id];
+  if (!a || (a.visitCount || 0) === 0) return 'not-visited';
+  const hasAns = a.marked.length > 0;
+  if (hasAns && a.isBookmarked) return 'answered-marked';
+  if (hasAns) return 'answered';
+  if (a.isBookmarked) return 'marked';
+  return 'not-answered';
+}
+
+function togglePalette() {
+  const modal = document.getElementById('palette-modal');
+  const isOpening = modal.classList.contains('hidden');
+  modal.classList.toggle('hidden');
+  if (!isOpening) return;
+
+  const curr = gFlat[gCursor];
+  if (!curr) return;
+  document.getElementById('pal-sec-name').innerText = `${curr.sectionTitle} (${curr.sectionQuestionCount} Qs)`;
+
+  // Palette is scoped to the active section, matching the real exam UI.
+  const secFlat = gFlat.filter(f => f.sectionIndex === curr.sectionIndex);
+  document.getElementById('palette-btns').innerHTML = secFlat.map(f => {
+    const cls = statusOf(f);
+    const isCurr = f.globalIndex === curr.globalIndex;
+    return `<button class="pal-btn ${cls} ${isCurr ? 'curr' : ''}" onclick="onPalBtnClicked(${f.globalIndex - 1})">${f.sectionLocalIndex}</button>`;
+  }).join('');
+}
+
+function onPalBtnClicked(index) {
+  gCursor = index;
+  togglePalette();
+  renderCurrentQuestion();
+}
+
+// ─── SUBMISSION ────────────────────────────────────────────────────────────
+function showSubmitConfirm() {
+  document.getElementById('submit-modal').classList.remove('hidden');
+  const counts = { answered: 0, 'not-answered': 0, marked: 0, 'answered-marked': 0, 'not-visited': 0 };
+  gFlat.forEach(f => { counts[statusOf(f)] += 1; });
+  const answered = counts.answered + counts['answered-marked'];
+  document.getElementById('submit-summary-text').innerHTML = `
+    • <b>Answered:</b> ${answered} of ${gFlat.length}<br>
+    • <b>Not Answered:</b> ${counts['not-answered']}<br>
+    • <b>Marked for Review:</b> ${counts.marked + counts['answered-marked']}<br>
+    • <b>Not Visited:</b> ${counts['not-visited']}<br>
+    • <b>Time Remaining:</b> ${fmtTime(gTimeLeft)}
+  `;
+}
+
+function hideSubmitConfirm() {
+  document.getElementById('submit-modal').classList.add('hidden');
+}
+
+/** Shape answers the way the RepeaterMock upstream expects them.
+ *
+ * `visits[].logs[]` is not decoration: the BFF's countLogs() derives answer
+ * changes, bookmark events and revisit counts from these entries, so an empty
+ * visits array silently zeroes the whole Attempt Behaviour analysis. */
+function buildUpstreamResponses() {
+  const out = {};
+  gFlat.forEach((f, i) => {
+    const a = gAnswers[f.question.id];
+    if (!a) return;
+    const touched = a.marked.length > 0 || a.isBookmarked || (a.timeSpent || 0) > 0;
+    if (!touched) return;
+    const nextQid = (gFlat[Math.min(i + 1, gFlat.length - 1)] || f).question.id;
+    out[f.question.id] = {
+      markedOption: a.marked.length > 0 ? a.marked.join(',') : null,
+      isBookmarked: a.isBookmarked,
+      time: Math.round(a.timeSpent || 0),
+      lang: a.lang || gLang,
+      visits: buildVisits(a, nextQid),
+    };
+  });
+  return out;
+}
+
+/** One visit entry per recorded visit, carrying that visit's own log slice. */
+function buildVisits(a, nextQid) {
+  const logs = a.logs || [];
+  const visitCount = Math.max(1, a.visitCount || 1);
+  if (visitCount === 1) {
+    return [{
+      time: Math.round(a.timeSpent || 0),
+      attempts: a.marked.length > 0 ? 1 : 0,
+      nextqid: nextQid,
+      logs,
+    }];
+  }
+  // Split logs across visits by their `at` offsets so countLogs sees the real
+  // visit count while every log entry is still reported exactly once.
+  const perVisit = [];
+  for (let v = 0; v < visitCount; v += 1) perVisit.push([]);
+  logs.forEach((log) => {
+    const idx = Math.min(visitCount - 1, Math.max(0, Number(log.visit) || 0));
+    perVisit[idx].push({ t: log.t, at: log.at, v: log.v });
+  });
+  const perVisitTime = Math.round((a.timeSpent || 0) / visitCount);
+  return perVisit.map((slice, v) => ({
+    time: v === visitCount - 1
+      ? Math.round((a.timeSpent || 0) - perVisitTime * (visitCount - 1))
+      : perVisitTime,
+    attempts: slice.some((l) => l.t === 'mo') ? 1 : 0,
+    nextqid: nextQid,
+    logs: slice,
+  }));
+}
+
+function currentQuestionToken() {
+  const f = gFlat[gCursor];
+  if (!f) return 's~1~q~1';
+  return `s~${f.sectionIndex + 1}~q~${f.sectionLocalIndex}`;
+}
+
+function flushAutosave() {
+  if (!gAttemptId || !gFlat[gCursor]) return;
+  bridge('saveProgress', {
+    testId: gInitialConfig.testId,
+    attemptId: gAttemptId,
+    engine: gInitialConfig.engine || 'tb',
+    currentQuestion: currentQuestionToken(),
+    timeLeft: gTimeLeft,
+    responses: buildUpstreamResponses(),
+  });
+}
+
+async function doSubmitExam(autoSubmitted) {
+  hideSubmitConfirm();
+  if (gTimerInterval) { clearInterval(gTimerInterval); gTimerInterval = null; }
+  if (gAutosaveInterval) { clearInterval(gAutosaveInterval); gAutosaveInterval = null; }
+  spinner(autoSubmitted ? 'Time up — submitting & grading...' : 'Submitting & grading...');
+
+  const submitRes = await bridge('submitAttempt', {
+    testId: gInitialConfig.testId,
+    attemptId: gAttemptId,
+    seriesSlug: gInitialConfig.seriesSlug,
+    engine: gInitialConfig.engine || 'tb',
+    currentQuestion: currentQuestionToken(),
+    responses: buildUpstreamResponses(),
+  });
+
+  bridge('onSubmitted', { attemptId: (submitRes && submitRes.attemptId) || gAttemptId });
+
+  if (submitRes && submitRes.attemptId) {
+    gAttemptId = submitRes.attemptId;
+    // The submit response already carries the full analysis, so render it
+    // directly instead of paying for another round trip.
+    gResultData = {
+      attempt: { attemptId: submitRes.attemptId, testTitle: (gPaper && gPaper.title) || '' },
+      totals: submitRes.totals || {},
+      sectionAnalysis: submitRes.sectionAnalysis || [],
+      subjectAnalysis: submitRes.subjectAnalysis || [],
+      topicAnalysis: submitRes.topicAnalysis || [],
+      difficultyAnalysis: submitRes.difficultyAnalysis || [],
+      tagAnalysis: submitRes.tagAnalysis || [],
+      cohortComparison: submitRes.cohortComparison || {},
+      behaviour: submitRes.behaviour || {},
+      graded: submitRes.graded !== false,
+    };
+    renderResult();
+  } else if (submitRes && submitRes.error) {
+    spinner(`Submission failed: ${submitRes.error}`);
+  } else {
+    spinner('Submission complete.');
+    bridgeClose();
+  }
+}
+
+// ─── VIEW 3: GRAPHICAL ANALYTICS SCORECARD ─────────────────────────────────
+async function loadResultView(attemptId) {
+  spinner('Loading scorecard...');
+  const res = await bridge('fetchResult', attemptId);
+  if (!res || !res.totals) {
+    spinner((res && res.error) ? `Result unavailable: ${res.error}` : 'Result unavailable.');
+    return;
+  }
+  gResultData = res;
+  renderResult();
+}
+
+function openResultView() {
+  if (gResultData) showView('v-result');
+  else if (gAttemptId) loadResultView(gAttemptId);
+}
+
+function renderResult() {
+  const d = gResultData;
+  const t = d.totals || {};
+  const totalQ = Number(t.totalQuestions) || 0;
+  const attempted = Number(t.attemptedCount) || 0;
+
+  document.getElementById('res-test-title').innerText = (d.attempt && d.attempt.testTitle) || 'Test Result';
+  document.getElementById('res-test-sub').innerText =
+    (d.attempt && d.attempt.seriesName) ? d.attempt.seriesName : 'Performance scorecard';
+  document.getElementById('res-score').innerText = `${num(t.score)} / ${num(t.totalMarks)}`;
+  document.getElementById('res-acc').innerText = `${num(t.accuracy)}%`;
+  document.getElementById('res-pct').innerText = `${num(t.percentage)}%`;
+  document.getElementById('res-att').innerText = `${attempted} / ${totalQ}`;
+  const avgSec = attempted > 0 ? Math.round(Number(t.timeSpentSeconds || 0) / attempted) : 0;
+  document.getElementById('res-speed').innerText = `${avgSec}s`;
+
+  // Percentile / rank band chips
+  const bandEl = document.getElementById('res-percentile-band');
+  const chips = [];
+  if (Number(t.estimatedPercentile) > 0) {
+    chips.push(`<span class="chip info">Est. percentile ${num(t.estimatedPercentile)}</span>`);
+  }
+  chips.push(`<span class="chip">${fmtTime(t.timeSpentSeconds || 0)} used</span>`);
+  if (Number(t.partialCount) > 0) chips.push(`<span class="chip warn">${t.partialCount} partial</span>`);
+  bandEl.innerHTML = chips.join('');
+
+  const unscored = Number(t.unscoredCount) || 0;
+  const notice = document.getElementById('res-unscored-notice');
+  notice.classList.toggle('hidden', unscored === 0 && d.graded !== false);
+  if (unscored > 0 || d.graded === false) {
+    document.getElementById('res-unscored-text').innerText = unscored > 0
+      ? `${unscored} of ${totalQ} questions have no answer key yet — they are excluded from accuracy. Reopen solutions later to re-grade.`
+      : 'The answer key had not unlocked upstream when this attempt was graded. Reopen solutions later to re-grade.';
+  }
+
+  renderDonut(t);
+  renderGauges(t);
+  renderMarksComposition(t, d);
+  renderSectionBars(d.sectionAnalysis || []);
+  renderRadar(d.subjectAnalysis || []);
+  renderGroupBars('res-subj-box', 'res-subj-bars', d.subjectAnalysis || []);
+  renderGroupBars('res-tag-box', 'res-tag-bars', (d.tagAnalysis || []).slice(0, 12));
+  renderDifficulty(d.difficultyAnalysis || []);
+  renderCohort(d.cohortComparison || {}, d.subjectAnalysis || []);
+  renderBehaviour(d.behaviour || {}, t);
+  renderTopicMatrix(d.topicAnalysis || []);
+
+  showView('v-result');
+}
+
+/** Multi-slice donut ring with a score label in the hole. */
+function renderDonut(t) {
+  const slices = [
+    { label: 'Correct', value: Number(t.correctCount) || 0, colour: '#10B981' },
+    { label: 'Incorrect', value: Number(t.incorrectCount) || 0, colour: '#F43F5E' },
+    { label: 'Partial', value: Number(t.partialCount) || 0, colour: '#F59E0B' },
+    { label: 'Unscored', value: Number(t.unscoredCount) || 0, colour: '#0D9488' },
+    { label: 'Skipped', value: Number(t.skippedCount) || 0, colour: '#64748B' },
+  ].filter(s => s.value > 0);
+
+  const total = Math.max(1, slices.reduce((sum, s) => sum + s.value, 0));
+  // r chosen so the circumference is exactly 100 units — dasharray becomes a %.
+  const R = 15.91549430918954;
+  let offset = 25;
+  const rings = slices.map(s => {
+    const pctVal = (s.value / total) * 100;
+    const ring = `<circle cx="21" cy="21" r="${R}" fill="transparent" stroke="${s.colour}" stroke-width="4.2"
+      stroke-dasharray="${pctVal.toFixed(3)} ${(100 - pctVal).toFixed(3)}" stroke-dashoffset="${offset.toFixed(3)}"></circle>`;
+    offset -= pctVal;
+    return ring;
+  }).join('');
+
+  document.getElementById('res-donut-svg').innerHTML = `
+    <circle cx="21" cy="21" r="${R}" fill="transparent" stroke="#1E293B" stroke-width="4.2"></circle>
+    ${rings}
+    <text x="21" y="20.5" class="donut-center" fill="#FFFFFF" font-size="6" font-weight="700">${num(t.accuracy)}%</text>
+    <text x="21" y="25" class="donut-center" fill="#94A3B8" font-size="3">ACCURACY</text>
+  `;
+
+  document.getElementById('res-tot-q').innerText = `${t.totalQuestions || 0} Questions`;
+  document.getElementById('res-donut-legend').innerHTML = slices.map(s => `
+    <div style="display:flex; align-items:center; gap:6px;">
+      <span style="width:9px; height:9px; border-radius:2px; background:${s.colour}; flex-shrink:0;"></span>
+      <span>${s.label}: <b>${s.value}</b> <span style="color:var(--txt3)">(${num((s.value / total) * 100)}%)</span></span>
+    </div>
+  `).join('') || '<div class="empty-note">No questions graded.</div>';
+}
+
+/** Two 180° arc gauges: answer accuracy and paper coverage. */
+function renderGauges(t) {
+  const totalQ = Math.max(1, Number(t.totalQuestions) || 0);
+  const coverage = ((Number(t.attemptedCount) || 0) / totalQ) * 100;
+  drawArcGauge('res-gauge-acc', Number(t.accuracy) || 0, 'Accuracy', '#10B981');
+  drawArcGauge('res-gauge-cov', coverage, 'Attempted', '#2DD4BF');
+  document.getElementById('res-gauge-note').innerHTML = `
+    You answered <b>${t.attemptedCount || 0}</b> of <b>${t.totalQuestions || 0}</b> questions
+    and got <b>${t.correctCount || 0}</b> right.
+    ${Number(t.incorrectCount) > 0 ? `Wrong answers cost you <b style="color:var(--red)">${num((Number(t.incorrectCount) || 0) * estimatedNeg(t))}</b> marks in penalties.` : 'No negative marking was applied.'}
+  `;
+}
+
+/** Average negative marks per wrong answer, derived from the section analysis. */
+function estimatedNeg(t) {
+  const secs = (gResultData && gResultData.sectionAnalysis) || [];
+  const maxScore = secs.reduce((s, x) => s + Number(x.maxScore || 0), 0);
+  const earned = (Number(t.correctCount) || 0);
+  if (!maxScore || !earned) return 0;
+  const perQ = maxScore / Math.max(1, Number(t.totalQuestions) || 1);
+  const lost = earned * perQ - Number(t.score || 0);
+  const wrong = Number(t.incorrectCount) || 0;
+  return wrong > 0 ? Math.max(0, Math.round((lost / wrong) * 100) / 100) : 0;
+}
+
+function drawArcGauge(id, value, label, colour) {
+  const svg = document.getElementById(id);
+  if (!svg) return;
+  const v = Math.max(0, Math.min(100, Number(value) || 0));
+  // Semicircle from (10,50) to (90,50), radius 40 — arc length = 40π ≈ 125.66.
+  const LEN = Math.PI * 40;
+  const filled = (v / 100) * LEN;
+  svg.innerHTML = `
+    <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="#1E293B" stroke-width="8" stroke-linecap="round"></path>
+    <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="${colour}" stroke-width="8" stroke-linecap="round"
+      stroke-dasharray="${filled.toFixed(2)} ${LEN.toFixed(2)}"></path>
+    <text x="50" y="44" text-anchor="middle" fill="#FFFFFF" font-size="15" font-weight="700">${num(v, 0)}%</text>
+    <text x="50" y="57" text-anchor="middle" fill="#94A3B8" font-size="8">${label}</text>
+  `;
+}
+
+/** Stacked bar showing earned marks, penalty, and unearned marks. */
+function renderMarksComposition(t, d) {
+  const svg = document.getElementById('res-marks-svg');
+  const maxMarks = Math.max(1, Number(t.totalMarks) || 0);
+  const score = Math.max(0, Number(t.score) || 0);
+  const penalty = (Number(t.incorrectCount) || 0) * estimatedNeg(t);
+  const lost = Math.max(0, maxMarks - score - penalty);
+
+  const rows = [
+    { label: 'Earned', value: score, colour: '#10B981' },
+    { label: 'Penalty', value: penalty, colour: '#F43F5E' },
+    { label: 'Unearned', value: lost, colour: '#334155' },
+  ];
+
+  const W = 300, H = 130, PAD_L = 62, BAR_H = 22, GAP = 12;
+  const usable = W - PAD_L - 46;
+  const bars = rows.map((r, i) => {
+    const y = 12 + i * (BAR_H + GAP);
+    const w = Math.max(0, (r.value / maxMarks) * usable);
+    return `
+      <text x="${PAD_L - 6}" y="${y + BAR_H / 2 + 3}" text-anchor="end" fill="#94A3B8" font-size="9">${r.label}</text>
+      <rect x="${PAD_L}" y="${y}" width="${usable}" height="${BAR_H}" rx="4" fill="#131B2E"></rect>
+      <rect x="${PAD_L}" y="${y}" width="${w.toFixed(1)}" height="${BAR_H}" rx="4" fill="${r.colour}"></rect>
+      <text x="${PAD_L + usable + 5}" y="${y + BAR_H / 2 + 3}" fill="#FFFFFF" font-size="9" font-weight="700">${num(r.value)}</text>
+    `;
+  }).join('');
+
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = `${bars}
+    <text x="${PAD_L}" y="${H - 6}" fill="#64748B" font-size="8">Out of ${num(maxMarks)} total marks</text>`;
+}
+
+function renderSectionBars(sections) {
+  const box = document.getElementById('res-sec-bars-box');
+  const el = document.getElementById('res-sec-bars');
+  if (sections.length === 0) {
+    box.classList.add('hidden');
+    return;
+  }
+  box.classList.remove('hidden');
+  el.innerHTML = sections.map(sec => {
+    const total = Math.max(1, Number(sec.total) || 0);
+    const seg = (n, colour) => {
+      const w = ((Number(n) || 0) / total) * 100;
+      return w > 0 ? `<div class="grp-seg" style="width:${w.toFixed(2)}%; background:${colour};"></div>` : '';
+    };
+    return `
+      <div class="bar-row">
+        <div class="bar-head">
+          <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(sec.label || sec.key)}</span>
+          <span style="white-space:nowrap;"><b style="color:#FFF">${num(sec.score)}</b> / ${num(sec.maxScore)} · <span class="heat ${heatClass(sec.accuracy)}">${num(sec.accuracy)}%</span></span>
+        </div>
+        <div class="grp-bar">
+          ${seg(sec.correct, 'var(--green)')}
+          ${seg(sec.partial, 'var(--amber)')}
+          ${seg(sec.incorrect, 'var(--red)')}
+          ${seg(sec.skipped, '#475569')}
+        </div>
+        <div style="font-size:9px; color:var(--txt3); margin-top:3px;">
+          ${sec.correct || 0} correct · ${sec.incorrect || 0} wrong · ${sec.skipped || 0} skipped · ${fmtTime(sec.timeSpent || 0)}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+/** Polygon radar of subject accuracy — needs 3+ subjects to be readable. */
+function renderRadar(subjects) {
+  const box = document.getElementById('res-radar-box');
+  const usable = subjects.filter(s => Number(s.total) > 0).slice(0, 8);
+  if (usable.length < 3) {
+    box.classList.add('hidden');
+    return;
+  }
+  box.classList.remove('hidden');
+
+  const CX = 120, CY = 108, R = 74;
+  const n = usable.length;
+  const angle = i => (Math.PI * 2 * i) / n - Math.PI / 2;
+  const pt = (i, frac) => [CX + Math.cos(angle(i)) * R * frac, CY + Math.sin(angle(i)) * R * frac];
+
+  let grid = '';
+  [0.25, 0.5, 0.75, 1].forEach(frac => {
+    const pts = usable.map((_, i) => pt(i, frac).map(v => v.toFixed(1)).join(',')).join(' ');
+    grid += `<polygon points="${pts}" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="1"></polygon>`;
+  });
+  const spokes = usable.map((_, i) => {
+    const [x, y] = pt(i, 1);
+    return `<line x1="${CX}" y1="${CY}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="rgba(255,255,255,0.07)"></line>`;
+  }).join('');
+
+  const dataPts = usable.map((s, i) => pt(i, Math.max(0.02, (Number(s.accuracy) || 0) / 100)).map(v => v.toFixed(1)).join(',')).join(' ');
+  const dots = usable.map((s, i) => {
+    const [x, y] = pt(i, Math.max(0.02, (Number(s.accuracy) || 0) / 100));
+    return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.6" fill="#2DD4BF"></circle>`;
+  }).join('');
+  const labels = usable.map((s, i) => {
+    const [x, y] = pt(i, 1.22);
+    const anchor = x < CX - 8 ? 'end' : (x > CX + 8 ? 'start' : 'middle');
+    const short = String(s.label || s.key).slice(0, 14);
+    return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${anchor}" fill="#94A3B8" font-size="7.5">${esc(short)}</text>`;
+  }).join('');
+
+  document.getElementById('res-radar-svg').innerHTML = `
+    ${grid}${spokes}
+    <polygon points="${dataPts}" fill="rgba(13,148,136,0.28)" stroke="#2DD4BF" stroke-width="1.6"></polygon>
+    ${dots}${labels}
+    <text x="${CX}" y="${CY + R + 42}" text-anchor="middle" fill="#64748B" font-size="7">Outer ring = 100% accuracy</text>
+  `;
+}
+
+/** Generic grouped stacked bars for any Tbv2GroupStats list. */
+function renderGroupBars(boxId, listId, groups) {
+  const box = document.getElementById(boxId);
+  const el = document.getElementById(listId);
+  const usable = groups.filter(g => Number(g.total) > 0);
+  if (usable.length === 0) {
+    box.classList.add('hidden');
+    return;
+  }
+  box.classList.remove('hidden');
+  el.innerHTML = usable.map(g => {
+    const total = Math.max(1, Number(g.total) || 0);
+    const seg = (v, colour) => {
+      const w = ((Number(v) || 0) / total) * 100;
+      return w > 0 ? `<div class="grp-seg" style="width:${w.toFixed(2)}%; background:${colour};"></div>` : '';
+    };
+    return `
+      <div class="bar-row">
+        <div class="bar-head">
+          <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(g.label || g.key)}</span>
+          <span><b style="color:#FFF">${g.correct || 0}</b>/${g.total || 0} · <span class="heat ${heatClass(g.accuracy)}">${num(g.accuracy)}%</span></span>
+        </div>
+        <div class="grp-bar">
+          ${seg(g.correct, 'var(--green)')}${seg(g.partial, 'var(--amber)')}${seg(g.incorrect, 'var(--red)')}${seg(g.skipped, '#475569')}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+/** Vertical column chart of accuracy per difficulty band. */
+function renderDifficulty(groups) {
+  const box = document.getElementById('res-diff-box');
+  const usable = groups.filter(g => Number(g.total) > 0);
+  if (usable.length === 0) {
+    box.classList.add('hidden');
+    return;
+  }
+  box.classList.remove('hidden');
+
+  const W = 300, H = 140, PAD_B = 26, PAD_T = 14;
+  const plotH = H - PAD_B - PAD_T;
+  const slotW = W / usable.length;
+  const barW = Math.min(38, slotW * 0.5);
+
+  const bars = usable.map((g, i) => {
+    const acc = Math.max(0, Math.min(100, Number(g.accuracy) || 0));
+    const h = (acc / 100) * plotH;
+    const x = i * slotW + (slotW - barW) / 2;
+    const y = PAD_T + plotH - h;
+    const colour = acc >= 70 ? '#10B981' : (acc >= 40 ? '#F59E0B' : '#F43F5E');
+    return `
+      <rect x="${x.toFixed(1)}" y="${PAD_T}" width="${barW}" height="${plotH}" rx="4" fill="#131B2E"></rect>
+      <rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW}" height="${Math.max(2, h).toFixed(1)}" rx="4" fill="${colour}"></rect>
+      <text x="${(x + barW / 2).toFixed(1)}" y="${(y - 3).toFixed(1)}" text-anchor="middle" fill="#FFFFFF" font-size="8.5" font-weight="700">${num(acc, 0)}%</text>
+      <text x="${(x + barW / 2).toFixed(1)}" y="${H - 12}" text-anchor="middle" fill="#94A3B8" font-size="8">${esc(String(g.label || g.key).slice(0, 10))}</text>
+      <text x="${(x + barW / 2).toFixed(1)}" y="${H - 3}" text-anchor="middle" fill="#64748B" font-size="7">${g.correct || 0}/${g.total || 0}</text>
+    `;
+  }).join('');
+
+  const svg = document.getElementById('res-diff-svg');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = `<line x1="0" y1="${PAD_T + plotH}" x2="${W}" y2="${PAD_T + plotH}" stroke="rgba(255,255,255,0.08)"></line>${bars}`;
+  document.getElementById('res-diff-legend').innerHTML =
+    usable.map(g => `<span>${esc(g.label || g.key)}: ${num(g.score)}/${num(g.maxScore)} marks</span>`).join('');
+}
+
+/** You-vs-cohort comparison, only rendered when upstream supplied cohort stats. */
+function renderCohort(cohort, subjects) {
+  const box = document.getElementById('res-cohort-box');
+  const better = Number(cohort.betterThanCohort) || 0;
+  const worse = Number(cohort.worseThanCohort) || 0;
+  const faster = Number(cohort.fasterThanAverage) || 0;
+  const slower = Number(cohort.slowerThanAverage) || 0;
+  if (better + worse + faster + slower === 0) {
+    box.classList.add('hidden');
+    return;
+  }
+  box.classList.remove('hidden');
+
+  const duel = (leftLabel, leftVal, rightLabel, rightVal, leftColour, rightColour) => {
+    const total = Math.max(1, leftVal + rightVal);
+    const lw = (leftVal / total) * 100;
+    return `
+      <div class="bar-row">
+        <div class="bar-head"><span>${leftLabel}: <b style="color:#FFF">${leftVal}</b></span><span>${rightLabel}: <b style="color:#FFF">${rightVal}</b></span></div>
+        <div class="grp-bar">
+          <div class="grp-seg" style="width:${lw.toFixed(2)}%; background:${leftColour};"></div>
+          <div class="grp-seg" style="width:${(100 - lw).toFixed(2)}%; background:${rightColour};"></div>
+        </div>
+      </div>
+    `;
+  };
+
+  const strong = (cohort.strongestSubjects || []).length
+    ? cohort.strongestSubjects
+    : subjects.slice().sort((a, b) => Number(b.accuracy) - Number(a.accuracy)).slice(0, 3).map(s => s.label || s.key);
+  const weak = (cohort.weakestSubjects || []).length
+    ? cohort.weakestSubjects
+    : subjects.slice().sort((a, b) => Number(a.accuracy) - Number(b.accuracy)).slice(0, 3).map(s => s.label || s.key);
+
+  document.getElementById('res-cohort-body').innerHTML = `
+    ${duel('Beat cohort', better, 'Below cohort', worse, 'var(--green)', 'var(--red)')}
+    ${duel('Faster than avg', faster, 'Slower than avg', slower, '#2DD4BF', 'var(--purple)')}
+    <div style="font-size:10px; color:var(--txt2); margin-top:6px;">
+      Average cohort accuracy on your questions: <b style="color:#FFF">${num(cohort.averageCohortAccuracy)}%</b>
+    </div>
+    ${strong.length ? `<div style="font-size:10px; text-transform:uppercase; color:var(--txt3); margin-top:10px;">Strong areas</div>
+      <div class="chip-row">${strong.map(s => `<span class="chip good">${esc(s)}</span>`).join('')}</div>` : ''}
+    ${weak.length ? `<div style="font-size:10px; text-transform:uppercase; color:var(--txt3); margin-top:8px;">Weak areas</div>
+      <div class="chip-row">${weak.map(s => `<span class="chip bad">${esc(s)}</span>`).join('')}</div>` : ''}
+  `;
+}
+
+function renderBehaviour(b, t) {
+  const box = document.getElementById('res-behav-box');
+  const keys = ['answerChanges', 'bookmarked', 'revisitedQuestions', 'averageTimePerQuestion'];
+  if (!keys.some(k => Number(b[k]) > 0)) {
+    box.classList.add('hidden');
+    document.getElementById('res-time-box').classList.add('hidden');
+    return;
+  }
+  box.classList.remove('hidden');
+
+  document.getElementById('res-behav-body').innerHTML = `
+    <div class="stats-grid" style="margin-bottom:0;">
+      <div class="stat-card"><div class="v">${b.answerChanges || 0}</div><div class="l">Answer Changes</div></div>
+      <div class="stat-card"><div class="v">${b.bookmarked || 0}</div><div class="l">Marked for Review</div></div>
+      <div class="stat-card"><div class="v">${b.revisitedQuestions || 0}</div><div class="l">Revisited</div></div>
+      <div class="stat-card"><div class="v">${num(b.averageTimePerQuestion, 0)}s</div><div class="l">Avg / Question</div></div>
+    </div>
+    <div class="chip-row">
+      ${Number(b.fastestQuestionTime) > 0 ? `<span class="chip info">Fastest ${num(b.fastestQuestionTime, 0)}s</span>` : ''}
+      ${Number(b.slowestQuestionTime) > 0 ? `<span class="chip warn">Slowest ${num(b.slowestQuestionTime, 0)}s</span>` : ''}
+      ${(b.languagesUsed || []).map(l => `<span class="chip">${esc(langName(l))}</span>`).join('')}
+    </div>
+  `;
+
+  // Time distribution across sections doubles as a pacing histogram.
+  const secs = (gResultData && gResultData.sectionAnalysis) || [];
+  const timeBox = document.getElementById('res-time-box');
+  if (secs.length === 0) {
+    timeBox.classList.add('hidden');
+    return;
+  }
+  timeBox.classList.remove('hidden');
+
+  const W = 300, H = 130, PAD_B = 30, PAD_T = 12;
+  const plotH = H - PAD_B - PAD_T;
+  const maxTime = Math.max(1, ...secs.map(s => Number(s.timeSpent) || 0));
+  const slotW = W / secs.length;
+  const barW = Math.min(40, slotW * 0.55);
+  const bars = secs.map((s, i) => {
+    const v = Number(s.timeSpent) || 0;
+    const h = (v / maxTime) * plotH;
+    const x = i * slotW + (slotW - barW) / 2;
+    const y = PAD_T + plotH - h;
+    return `
+      <rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW}" height="${Math.max(2, h).toFixed(1)}" rx="3" fill="#0D9488"></rect>
+      <text x="${(x + barW / 2).toFixed(1)}" y="${(y - 3).toFixed(1)}" text-anchor="middle" fill="#2DD4BF" font-size="7.5">${fmtTime(v)}</text>
+      <text x="${(x + barW / 2).toFixed(1)}" y="${H - 14}" text-anchor="middle" fill="#94A3B8" font-size="7.5">${esc(String(s.label || s.key).slice(0, 12))}</text>
+      <text x="${(x + barW / 2).toFixed(1)}" y="${H - 4}" text-anchor="middle" fill="#64748B" font-size="7">${s.total || 0} Qs</text>
+    `;
+  }).join('');
+
+  const svg = document.getElementById('res-time-svg');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = `<line x1="0" y1="${PAD_T + plotH}" x2="${W}" y2="${PAD_T + plotH}" stroke="rgba(255,255,255,0.08)"></line>${bars}`;
+  document.getElementById('res-time-note').innerText =
+    `Total ${fmtTime(t.timeSpentSeconds || 0)} across ${secs.length} section${secs.length === 1 ? '' : 's'}.`;
+}
+
+function renderTopicMatrix(topics) {
+  const box = document.getElementById('res-topic-box');
+  const usable = topics.filter(x => Number(x.total) > 0)
+    .slice().sort((a, b) => Number(a.accuracy) - Number(b.accuracy));
+  if (usable.length === 0) {
+    box.classList.add('hidden');
+    return;
+  }
+  box.classList.remove('hidden');
+  const shown = gTopicExpanded ? usable : usable.slice(0, 8);
+  document.getElementById('res-topic-rows').innerHTML = shown.map(x => `
+    <tr>
+      <td>${esc(x.label || x.key)}</td>
+      <td class="num">${x.correct || 0}/${x.total || 0}</td>
+      <td class="num">${num(x.score)}</td>
+      <td class="num"><span class="heat ${heatClass(x.accuracy)}">${num(x.accuracy)}%</span></td>
+    </tr>
+  `).join('');
+  const toggle = document.getElementById('res-topic-toggle');
+  toggle.classList.toggle('hidden', usable.length <= 8);
+  toggle.innerText = gTopicExpanded ? 'Show less' : `Show all ${usable.length}`;
+}
+
+function toggleTopicRows() {
+  gTopicExpanded = !gTopicExpanded;
+  renderTopicMatrix((gResultData && gResultData.topicAnalysis) || []);
+}
+
+// ─── VIEW 4: BILINGUAL SOLUTIONS REVIEW ─────────────────────────────────────
+// Built as a one-question-at-a-time navigator so review feels identical to the
+// taker: same section tabs, same palette drawer, same bottom bar. Only the
+// explanation is collapsed by default, since it is the longest block.
+async function openSolutionsView() {
+  loadSolutionsView(gAttemptId);
+}
+
+function backFromSolutions() {
+  if (gResultData) showView('v-result');
+  else bridgeClose();
+}
+
+async function loadSolutionsView(attemptId) {
+  spinner('Loading solutions...');
+  const sol = await bridge('fetchSolutions', { attemptId, lang: gLang });
+  if (!sol || !sol.questions) {
+    spinner((sol && sol.error) ? `Solutions unavailable: ${sol.error}` : 'Solutions unavailable.');
+    return;
+  }
+  gSolutionsData = sol;
+  gAttemptId = attemptId;
+
+  const qs = sol.questions || [];
+  document.getElementById('sol-title').innerText = sol.testTitle || 'Solutions Review';
+
+  // Union of every language that actually has an explanation.
+  const langSet = {};
+  qs.forEach(q => (q.availableSolutionLangs || []).forEach(l => { langSet[l] = true; }));
+  const langs = Object.keys(langSet);
+  const solLangSel = document.getElementById('sol-lang-sel');
+  if (langs.length > 0) {
+    solLangSel.classList.remove('hidden');
+    solLangSel.innerHTML = langs.map(l => `<option value="${esc(l)}" ${l === gLang ? 'selected' : ''}>${esc(langName(l))}</option>`).join('');
+  } else {
+    solLangSel.classList.add('hidden');
+  }
+
+  // Section list, in first-appearance order, driving the tab bar.
+  gSolSections = [];
+  qs.forEach(q => {
+    const id = q.sectionId || '';
+    if (!gSolSections.some(s => s.id === id)) {
+      gSolSections.push({ id, title: q.sectionTitle || 'Section' });
+    }
+  });
+  gSolSectionId = '';
+  gSolCursor = 0;
+
+  showView('v-solutions');
+  renderSolSectionTabs();
+  applySolFilter();
+}
+
+function onSolLangChanged(code) {
+  gLang = code;
+  loadSolutionsView(gAttemptId);
+}
+
+/** Section tabs: an "All" tab plus one per section, with per-tab counts. */
+function renderSolSectionTabs() {
+  const tabs = document.getElementById('sol-sectabs');
+  const qs = (gSolutionsData && gSolutionsData.questions) || [];
+  if (gSolSections.length <= 1) {
+    tabs.classList.add('hidden');
+    return;
+  }
+  tabs.classList.remove('hidden');
+  const all = `
+    <button class="sectab ${gSolSectionId === '' ? 'active' : ''}" onclick="jumpToSolSection('')">
+      <span>All</span><span class="badge">${qs.length}</span>
+    </button>`;
+  tabs.innerHTML = all + gSolSections.map(s => {
+    const n = qs.filter(q => (q.sectionId || '') === s.id).length;
+    return `
+      <button class="sectab ${gSolSectionId === s.id ? 'active' : ''}" onclick="jumpToSolSection(${JSON.stringify(s.id).replace(/"/g, '&quot;')})">
+        <span>${esc(s.title)}</span><span class="badge">${n}</span>
+      </button>`;
+  }).join('');
+}
+
+function jumpToSolSection(sectionId) {
+  gSolSectionId = sectionId;
+  gSolCursor = 0;
+  renderSolSectionTabs();
+  applySolFilter();
+}
+
+function filterSolutions(filter, btn) {
+  gSolFilter = filter;
+  document.querySelectorAll('#sol-filters .pill').forEach(p => p.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  gSolCursor = 0;
+  applySolFilter();
+}
+
+/** Recompute the visible question list from the section tab + status pill. */
+function applySolFilter() {
+  const qs = (gSolutionsData && gSolutionsData.questions) || [];
+  gSolFlat = qs.filter(q => {
+    if (gSolSectionId && (q.sectionId || '') !== gSolSectionId) return false;
+    if (gSolFilter === 'bookmarked') return q.isBookmarked === true;
+    if (gSolFilter === 'all') return true;
+    return q.status === gSolFilter;
+  });
+  if (gSolCursor >= gSolFlat.length) gSolCursor = 0;
+  renderSolutionQuestion();
+}
+
+const STATUS_META = {
+  correct: { cls: 'pos', label: 'Correct', pal: 'answered' },
+  incorrect: { cls: 'neg', label: 'Incorrect', pal: 'not-answered' },
+  partial: { cls: 'neg', label: 'Partially Correct', pal: 'partial' },
+  skipped: { cls: 'sub', label: 'Skipped', pal: 'skipped' },
+  unscored: { cls: 'sub', label: 'Not Graded', pal: 'answered-marked' },
+};
+
+/** Render the question at gSolCursor into the persistent solution shell. */
+function renderSolutionQuestion() {
+  const total = gSolFlat.length;
+  const scroll = document.getElementById('sol-scroll');
+  const card = scroll.querySelector('.qcard');
+  const empty = document.getElementById('sol-empty');
+
+  if (total === 0) {
+    card.classList.add('hidden');
+    document.getElementById('sol-comp-wrap').classList.add('hidden');
+    if (!empty) {
+      scroll.insertAdjacentHTML('beforeend',
+        '<div class="empty-note" id="sol-empty" style="padding:30px 0;">No questions match this filter.</div>');
+    }
+    document.getElementById('sol-sub').innerText = '0 questions';
+    document.getElementById('sol-btn-prev').disabled = true;
+    document.getElementById('sol-btn-next').disabled = true;
+    return;
+  }
+  if (empty) empty.remove();
+  card.classList.remove('hidden');
+
+  const q = gSolFlat[gSolCursor];
+  const meta = STATUS_META[q.status] || { cls: 'sub', label: String(q.status || 'Attempted') };
+  const correctList = (q.multiCorrectOptions && q.multiCorrectOptions.length)
+    ? q.multiCorrectOptions.map(String)
+    : (q.correctOption !== null && q.correctOption !== undefined ? [String(q.correctOption)] : []);
+  const markedList = q.markedOption
+    ? String(q.markedOption).split(',').map(s => s.trim()).filter(Boolean)
+    : [];
+  const hasKey = correctList.length > 0;
+  const options = q.options || [];
+  const isNumeric = options.length === 0 && (q.questionType === 'numeric' || markedList.length > 0 || hasKey);
+
+  document.getElementById('sol-sub').innerText = `Question ${gSolCursor + 1} of ${total}`;
+  document.getElementById('sol-qnum').innerText = `Q${q.qsNo || q.questionOrder || gSolCursor + 1}`;
+
+  const statusEl = document.getElementById('sol-status');
+  statusEl.className = `mtag ${meta.cls}`;
+  statusEl.innerText = meta.label;
+
+  const marks = Number(q.marksAwarded) || 0;
+  const marksEl = document.getElementById('sol-marks');
+  marksEl.className = `mtag ${marks > 0 ? 'pos' : (marks < 0 ? 'neg' : 'sub')}`;
+  marksEl.innerText = `${marks > 0 ? '+' : ''}${num(marks)}`;
+
+  document.getElementById('sol-time').innerText = `${num(q.timeSpent, 0)}s`;
+  document.getElementById('sol-sec-label').innerText = q.sectionTitle || '';
+
+  // Comprehension passages ride along on the question HTML upstream, so the
+  // dedicated box only appears when the row actually carries one.
+  const compWrap = document.getElementById('sol-comp-wrap');
+  if (q.comprehension) {
+    compWrap.classList.remove('hidden');
+    const compEl = document.getElementById('sol-comp-html');
+    compEl.innerHTML = q.comprehension;
+    renderMath(compEl);
+  } else {
+    compWrap.classList.add('hidden');
+  }
+
+  const qhtml = document.getElementById('sol-qhtml');
+  qhtml.innerHTML = q.questionHtml || '<p style="color:#64748B">Question text unavailable.</p>';
+  renderMath(qhtml);
+
+  document.getElementById('sol-body').innerHTML =
+    isNumeric
+      ? numericAnswerHtml(q, markedList, correctList, hasKey)
+      : optionsAnswerHtml(options, markedList, correctList, hasKey);
+  renderMath(document.getElementById('sol-body'));
+
+  // Explanation stays collapsed on every question change so long solutions
+  // never push the options off screen.
+  const expHtml = document.getElementById('sol-exp-html');
+  const wrap = document.getElementById('sol-exp-wrap');
+  const head = document.getElementById('sol-exp-head');
+  const bodyEl = document.getElementById('sol-exp-body');
+  if (q.solutionHtml) {
+    wrap.classList.remove('muted');
+    head.disabled = false;
+    document.querySelector('#sol-exp-head .acc-title').innerText = 'Explanation';
+    expHtml.innerHTML = q.solutionHtml;
+  } else {
+    wrap.classList.add('muted');
+    head.disabled = false;
+    document.querySelector('#sol-exp-head .acc-title').innerText =
+      hasKey ? 'No written explanation' : 'Explanation locked';
+    expHtml.innerHTML = `<div style="color:var(--txt3); font-size:12px;">No written explanation available${hasKey ? '' : ' — the answer key has not unlocked upstream yet'}.</div>`;
+  }
+  bodyEl.classList.add('hidden');
+  head.setAttribute('aria-expanded', 'false');
+
+  document.getElementById('sol-extras').innerHTML = solutionExtrasHtml(q);
+
+  document.getElementById('sol-btn-prev').disabled = gSolCursor === 0;
+  const nextBtn = document.getElementById('sol-btn-next');
+  nextBtn.disabled = gSolCursor >= total - 1;
+  nextBtn.innerText = gSolCursor >= total - 1 ? 'Last' : 'Next';
+
+  // Keep the active section tab in view when navigating across a boundary.
+  if (gSolSectionId === '' && gSolSections.length > 1) {
+    renderSolSectionTabs();
+  }
+  scroll.scrollTop = 0;
+}
+
+function numericAnswerHtml(q, markedList, correctList, hasKey) {
+  const entered = markedList[0] || null;
+  return `
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
+      <div>
+        <div style="font-size:9px; text-transform:uppercase; color:var(--txt3);">Your answer</div>
+        <div class="numeric-key ${q.status === 'correct' ? 'ok' : 'no'}">${entered !== null ? esc(entered) : '—'}</div>
+      </div>
+      ${hasKey ? `<div>
+        <div style="font-size:9px; text-transform:uppercase; color:var(--txt3);">Correct answer</div>
+        <div class="numeric-key ok">${esc(correctList.join(' or '))}</div>
+      </div>` : ''}
+    </div>
+  `;
+}
+
+function optionsAnswerHtml(options, markedList, correctList, hasKey) {
+  if (options.length === 0) {
+    return '<div class="empty-note">Options unavailable in this language.</div>';
+  }
+  return `<div class="opts">${options.map(opt => {
+    const prompt = String(opt.prompt);
+    const isCorrect = hasKey && correctList.indexOf(prompt) !== -1;
+    const isMarked = markedList.indexOf(prompt) !== -1;
+    let cls = '';
+    if (isCorrect) cls = 'correct';
+    else if (isMarked) cls = hasKey ? 'wrong' : 'unscored-marked';
+    let tick = '';
+    if (isCorrect) tick = '<span style="color:var(--green); font-size:14px; margin-left:auto; flex-shrink:0;">✓</span>';
+    else if (isMarked && hasKey) tick = '<span style="color:var(--red); font-size:14px; margin-left:auto; flex-shrink:0;">✗</span>';
+    else if (isMarked) tick = '<span style="color:#2DD4BF; font-size:10px; margin-left:auto; flex-shrink:0;">yours</span>';
+    return `
+      <div class="opt ${cls}">
+        <div class="opt-idx">${esc(prompt)}</div>
+        <div class="opt-txt ohtml">${opt.value || esc(prompt)}</div>
+        ${tick}
+      </div>
+    `;
+  }).join('')}</div>`;
+}
+
+/** Video link, cohort chips, concept breadcrumb and tags for one question. */
+function solutionExtrasHtml(q) {
+  const chips = [];
+  if (Number(q.cohortAccuracy) > 0) {
+    chips.push(`<span class="chip ${Number(q.cohortAccuracy) < 50 ? 'warn' : 'info'}">${num(q.cohortAccuracy)}% got this right</span>`);
+  }
+  if (Number(q.timeVsAverage) !== 0 && isFinite(Number(q.timeVsAverage))) {
+    const dv = Number(q.timeVsAverage);
+    chips.push(`<span class="chip ${dv < 0 ? 'good' : 'bad'}">${dv < 0 ? 'Faster' : 'Slower'} by ${num(Math.abs(dv), 0)}s</span>`);
+  }
+  if (q.difficulty) chips.push(`<span class="chip">${esc(q.difficulty)}</span>`);
+  if (Number(q.answerChanges) > 0) chips.push(`<span class="chip warn">Changed ${q.answerChanges}×</span>`);
+  if (q.isBookmarked) chips.push('<span class="chip info">Marked for review</span>');
+
+  const breadcrumb = [q.subject, q.chapter, q.topic, q.subtopic].filter(Boolean).map(esc).join(' › ');
+
+  return `
+    ${q.videoSolution ? `<a class="vid-btn" href="${esc(q.videoSolution)}" target="_blank" rel="noopener">▶ Watch video solution</a>` : ''}
+    ${chips.length ? `<div class="sol-meta-row">${chips.join('')}</div>` : ''}
+    ${breadcrumb ? `<div class="concept-tag">📌 ${breadcrumb}</div>` : ''}
+    ${(q.tags || []).length ? `<div class="chip-row">${q.tags.slice(0, 6).map(tg => `<span class="chip">${esc(tg)}</span>`).join('')}</div>` : ''}
+  `;
+}
+
+function toggleSolExplanation() {
+  const body = document.getElementById('sol-exp-body');
+  const head = document.getElementById('sol-exp-head');
+  const opening = body.classList.contains('hidden');
+  body.classList.toggle('hidden', !opening);
+  head.setAttribute('aria-expanded', opening ? 'true' : 'false');
+  // KaTeX cannot measure inside a display:none subtree, so math in the
+  // explanation is typeset the first time the panel actually opens.
+  if (opening && !body.dataset.mathDone) {
+    renderMath(body);
+    body.dataset.mathDone = '1';
+  }
+}
+
+function solPrev() {
+  if (gSolCursor > 0) {
+    gSolCursor -= 1;
+    renderSolutionQuestion();
+  }
+}
+
+function solNext() {
+  if (gSolCursor < gSolFlat.length - 1) {
+    gSolCursor += 1;
+    renderSolutionQuestion();
+  }
+}
+
+function toggleSolPalette() {
+  const modal = document.getElementById('sol-palette-modal');
+  const opening = modal.classList.contains('hidden');
+  modal.classList.toggle('hidden');
+  if (!opening) return;
+
+  document.getElementById('sol-pal-name').innerText =
+    `${gSolFlat.length} question${gSolFlat.length === 1 ? '' : 's'} in view`;
+  document.getElementById('sol-palette-btns').innerHTML = gSolFlat.map((q, i) => {
+    const meta = STATUS_META[q.status] || { pal: 'not-visited' };
+    const curr = i === gSolCursor ? 'curr' : '';
+    return `<button class="pal-btn ${meta.pal || 'not-visited'} ${curr}" onclick="onSolPalClicked(${i})">${q.qsNo || i + 1}</button>`;
+  }).join('') || '<div class="empty-note">Nothing to show.</div>';
+}
+
+function onSolPalClicked(index) {
+  gSolCursor = index;
+  toggleSolPalette();
+  renderSolutionQuestion();
+}
+
+// ─── VIEW 5: LIFETIME STATS DASHBOARD ───────────────────────────────────────
+async function loadStatsView() {
+  spinner('Loading performance dashboard...');
+  const res = await bridge('fetchStats', {});
+  if (!res || !res.summary) {
+    spinner((res && res.error) ? `Stats unavailable: ${res.error}` : 'No performance data yet.');
+    return;
+  }
+  gStatsData = res;
+  renderStats();
+}
+
+function renderStats() {
+  const s = gStatsData.summary || {};
+  document.getElementById('st-score').innerText = `${num(s.totalScore)} / ${num(s.totalMarks)}`;
+  document.getElementById('st-tests').innerText = s.testsSubmitted || 0;
+  document.getElementById('st-acc').innerText = `${num(s.averageAccuracy)}%`;
+  document.getElementById('st-pct').innerText = `${num(s.overallPercentage)}%`;
+  const hrs = (Number(s.totalTimeSeconds) || 0) / 3600;
+  document.getElementById('st-time').innerText = hrs >= 1 ? `${num(hrs, 1)}h` : `${Math.round((Number(s.totalTimeSeconds) || 0) / 60)}m`;
+  document.getElementById('stats-sub').innerText =
+    `${s.testsAttempted || 0} attempted · ${s.totalQuestions || 0} questions solved`;
+
+  renderScoreTrend(gStatsData.scoreTrend || []);
+  renderStatsSubjects(gStatsData.subjectStats || []);
+  renderStrengthChips(gStatsData.strongestSubjects || [], gStatsData.weakestSubjects || []);
+  renderStatsDifficulty(gStatsData.difficultyStats || []);
+
+  showView('v-stats');
+}
+
+/** Dual-series line chart: percentage and accuracy over submitted attempts. */
+function renderScoreTrend(trend) {
+  const box = document.getElementById('st-trend-box');
+  const pts = trend.filter(x => x.percentage !== null && x.percentage !== undefined);
+  if (pts.length < 2) {
+    box.classList.add('hidden');
+    return;
+  }
+  box.classList.remove('hidden');
+
+  const W = 320, H = 170, PAD_L = 26, PAD_R = 8, PAD_T = 12, PAD_B = 24;
+  const plotW = W - PAD_L - PAD_R;
+  const plotH = H - PAD_T - PAD_B;
+  const xAt = i => PAD_L + (pts.length === 1 ? plotW / 2 : (i / (pts.length - 1)) * plotW);
+  const yAt = v => PAD_T + plotH - (Math.max(0, Math.min(100, Number(v) || 0)) / 100) * plotH;
+
+  const line = (key, colour) => {
+    const path = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xAt(i).toFixed(1)} ${yAt(p[key]).toFixed(1)}`).join(' ');
+    const dots = pts.map((p, i) => `<circle cx="${xAt(i).toFixed(1)}" cy="${yAt(p[key]).toFixed(1)}" r="2.4" fill="${colour}"></circle>`).join('');
+    return `<path d="${path}" fill="none" stroke="${colour}" stroke-width="2" stroke-linejoin="round"></path>${dots}`;
+  };
+
+  const grid = [0, 25, 50, 75, 100].map(v => `
+    <line x1="${PAD_L}" y1="${yAt(v).toFixed(1)}" x2="${W - PAD_R}" y2="${yAt(v).toFixed(1)}" stroke="rgba(255,255,255,0.06)"></line>
+    <text x="${PAD_L - 4}" y="${(yAt(v) + 3).toFixed(1)}" text-anchor="end" fill="#64748B" font-size="7">${v}</text>
+  `).join('');
+
+  document.getElementById('st-trend-svg').innerHTML = `
+    ${grid}
+    ${line('percentage', '#2DD4BF')}
+    ${line('accuracy', '#8B5CF6')}
+    <text x="${PAD_L}" y="${H - 6}" fill="#64748B" font-size="7">Oldest</text>
+    <text x="${W - PAD_R}" y="${H - 6}" text-anchor="end" fill="#64748B" font-size="7">Latest (${pts.length} tests)</text>
+  `;
+}
+
+function renderStatsSubjects(subjects) {
+  const box = document.getElementById('st-subj-box');
+  const usable = subjects.filter(s => Number(s.questions) > 0).slice(0, 12);
+  if (usable.length === 0) {
+    box.classList.add('hidden');
+    return;
+  }
+  box.classList.remove('hidden');
+  document.getElementById('st-subj-bars').innerHTML = usable.map(s => `
+    <div class="bar-row">
+      <div class="bar-head">
+        <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(s.subject)}</span>
+        <span>${s.correct || 0}/${s.attempted || 0} · <span class="heat ${heatClass(s.accuracy)}">${num(s.accuracy)}%</span></span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${Math.max(0, Math.min(100, Number(s.accuracy) || 0)).toFixed(1)}%; background:${heatClass(s.accuracy) === 'hi' ? 'var(--green)' : (heatClass(s.accuracy) === 'mid' ? 'var(--amber)' : 'var(--red)')};"></div>
+      </div>
+      <div style="font-size:9px; color:var(--txt3); margin-top:3px;">${s.questions || 0} questions seen · ${fmtTime(s.timeSpent || 0)}</div>
+    </div>
+  `).join('');
+}
+
+function renderStrengthChips(strong, weak) {
+  const box = document.getElementById('st-strength-box');
+  if (strong.length === 0 && weak.length === 0) {
+    box.classList.add('hidden');
+    return;
+  }
+  box.classList.remove('hidden');
+  document.getElementById('st-strong').innerHTML = strong.length
+    ? strong.map(s => `<span class="chip good">${esc(s.subject)} · ${num(s.accuracy)}%</span>`).join('')
+    : '<span class="chip">Attempt at least 3 questions per subject</span>';
+  document.getElementById('st-weak').innerHTML = weak.length
+    ? weak.map(s => `<span class="chip bad">${esc(s.subject)} · ${num(s.accuracy)}%</span>`).join('')
+    : '<span class="chip">Not enough data yet</span>';
+}
+
+function renderStatsDifficulty(diffs) {
+  const box = document.getElementById('st-diff-box');
+  const usable = diffs.filter(d => Number(d.questions) > 0);
+  if (usable.length === 0) {
+    box.classList.add('hidden');
+    return;
+  }
+  box.classList.remove('hidden');
+  document.getElementById('st-diff-bars').innerHTML = usable.map(d => `
+    <div class="bar-row">
+      <div class="bar-head">
+        <span>${esc(d.difficulty)}</span>
+        <span>${d.correct || 0}/${d.attempted || 0} · <span class="heat ${heatClass(d.accuracy)}">${num(d.accuracy)}%</span></span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${Math.max(0, Math.min(100, Number(d.accuracy) || 0)).toFixed(1)}%; background:var(--accent);"></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ─── VIEW 6: ATTEMPT HISTORY ────────────────────────────────────────────────
+async function loadHistoryView() {
+  spinner('Loading attempt history...');
+  const res = await bridge('fetchHistory', { limit: 100, offset: 0, slug: gInitialConfig.seriesSlug || null });
+  if (!res || !res.attempts) {
+    spinner((res && res.error) ? `History unavailable: ${res.error}` : 'No attempts yet.');
+    return;
+  }
+  gHistoryData = res.attempts;
+  document.getElementById('hist-sub').innerText = `${gHistoryData.length} attempt${gHistoryData.length === 1 ? '' : 's'}`;
+  showView('v-history');
+  filterHistory('all', document.querySelector('#hist-filters .pill'));
+}
+
+function filterHistory(filter, btn) {
+  document.querySelectorAll('#hist-filters .pill').forEach(p => p.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const rows = filter === 'all' ? gHistoryData : gHistoryData.filter(a => a.status === filter);
+  const list = document.getElementById('hist-list');
+  if (rows.length === 0) {
+    list.innerHTML = '<div class="empty-note" style="padding:30px 0;">No attempts in this bucket.</div>';
+    return;
+  }
+  list.innerHTML = rows.map(a => {
+    const submitted = a.status === 'submitted';
+    const when = a.submittedAt || a.startedAt;
+    return `
+      <div class="sol-card" style="padding:12px;">
+        <div style="display:flex; gap:8px; align-items:flex-start;">
+          <div style="flex:1; min-width:0;">
+            <div style="font-size:13px; font-weight:700;">${esc(a.testTitle || 'Untitled test')}</div>
+            <div style="font-size:10px; color:var(--txt2); margin-top:2px;">${esc(a.seriesName || a.seriesSlug || '')}</div>
+          </div>
+          <span class="mtag ${submitted ? 'pos' : 'neg'}">${submitted ? 'Submitted' : 'In progress'}</span>
+        </div>
+        ${submitted ? `
+          <div class="stats-grid" style="margin:10px 0 0; grid-template-columns:repeat(4,1fr);">
+            <div class="stat-card" style="padding:7px;"><div class="v" style="font-size:13px;">${num(a.score)}</div><div class="l">Score</div></div>
+            <div class="stat-card" style="padding:7px;"><div class="v" style="font-size:13px; color:var(--green)">${num(a.accuracy)}%</div><div class="l">Acc</div></div>
+            <div class="stat-card" style="padding:7px;"><div class="v" style="font-size:13px;">${num(a.percentage)}%</div><div class="l">Pct</div></div>
+            <div class="stat-card" style="padding:7px;"><div class="v" style="font-size:13px;">${a.attemptedCount || 0}</div><div class="l">Att</div></div>
+          </div>
+          <div class="grp-bar" style="margin-top:8px;">
+            ${histSeg(a.correctCount, a.totalQuestions, 'var(--green)')}
+            ${histSeg(a.incorrectCount, a.totalQuestions, 'var(--red)')}
+            ${histSeg(a.skippedCount, a.totalQuestions, '#475569')}
+          </div>
+        ` : ''}
+        <div class="sol-meta-row">
+          <span class="chip">${esc(fmtDate(when))}</span>
+          ${Number(a.timeSpentSeconds) > 0 ? `<span class="chip">${fmtTime(a.timeSpentSeconds)}</span>` : ''}
+          ${Number(a.estimatedPercentile) > 0 ? `<span class="chip info">${num(a.estimatedPercentile)} pct</span>` : ''}
+        </div>
+        <div style="display:flex; gap:6px; margin-top:10px;">
+          ${submitted ? `
+            <button class="btn btn-sub" style="flex:1;" onclick="loadResultView('${esc(a.attemptId)}')">Scorecard</button>
+            <button class="btn btn-main" style="flex:1;" onclick="loadSolutionsView('${esc(a.attemptId)}')">Solutions</button>
+          ` : `<button class="btn btn-main" style="flex:1;" onclick="bridge('resumeAttempt', ${esc(JSON.stringify({ testId: a.testId, seriesSlug: a.seriesSlug, engine: a.engine, attemptId: a.attemptId }))})">Resume</button>`}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function histSeg(v, total, colour) {
+  const w = ((Number(v) || 0) / Math.max(1, Number(total) || 0)) * 100;
+  return w > 0 ? `<div class="grp-seg" style="width:${w.toFixed(2)}%; background:${colour};"></div>` : '';
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return String(iso);
+  return d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' }) +
+    ' · ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+}
+</script>
+</body>
+</html>
